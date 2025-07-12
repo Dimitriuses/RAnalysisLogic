@@ -110,18 +110,52 @@ function simulateGraph(graph: LogicGraph, inputValues: Record<string, boolean>):
   return values;
 }
 
-function updateColors(values: Record<string, boolean>, nodeList: DataSet<Node>, edgeList: DataSet<Edge>) {
+
+// Основна функція для отримання всіх залежностей від OUTPUT
+function findDependenciesForOutput(
+  graph: Record<string, LogicNode>,
+  outputId: string
+): Set<string> {
+  //const dependencies = new Set<string>();
+  const visited = new Set<string>();
+  
+  // Рекурсивна функція для збору залежностей
+  function collectDependencies(
+    nodeId: string,
+    // visited: Set<string>
+  ) {
+    if (visited.has(nodeId)) return;
+    visited.add(nodeId);
+  
+    const node = graph[nodeId];
+    for (const inputId of node.inputs) {
+      collectDependencies(inputId);
+    }
+    console.log(visited)
+  }
+  
+  collectDependencies(outputId);
+  return visited;
+}
+
+function updateColors(values: Record<string, boolean>, nodeList: DataSet<Node>, edgeList: DataSet<Edge>, relevantInputs?: Set<string> ) {
   const updated = Object.entries(values).map(([id, value]) => ({
     id,
-    color: { background: value ? '#a0f0a0' : '#f0a0a0' }
+    color: { 
+      background: relevantInputs?.has(id)? '#7779ffff' : (value ? '#a0f0a0' : '#f0a0a0'),
+      // border: relevantInputs?.has(id)? '#7779ffff' : '#ffffff'
+    },
+
   }));
   nodeList.update(updated);
 
   const updatedEdges = edgeList.get().map(edge => {
-    const fromVal = values[edge.from as string];
+    const id = edge.from as string
+    const idt = edge.to as string
+    const fromVal = values[id];
     return {
       id: edge.id,
-      color: { color: fromVal ? '#00cc00' : '#cc0000' }, // Зелений = 1, Червоний = 0
+      color: { color: relevantInputs?.has(idt)? '#0300ccff' : (fromVal ? '#00cc00' : '#cc0000') }, // Зелений = 1, Червоний = 0
       arrows: 'to' // Додатково можна вмикати стрілку
     };
   });
@@ -339,6 +373,9 @@ function main() {
   };
 
   const network = new Network(container, { nodes, edges }, options);
+  
+
+  let relevantInputsPerOutput: Record<string, Set<string>> = {};
 
   network.on('click', function (params) {
     if (params.nodes.length > 0) {
@@ -347,6 +384,15 @@ function main() {
         inputValues[id] = !inputValues[id];
         const result = simulateGraph(graph, inputValues);
         updateColors(result, nodes, edges);
+      }
+      if (graph[id]?.type === "OUTPUT") {
+        const deps = findDependenciesForOutput(graph, id);
+        // relevantInputsPerOutput[id] = new Set(
+        //   Array.from(deps).filter(id => graph[id].type === "INPUT")
+        // );
+        relevantInputsPerOutput[id] = deps
+        console.log(relevantInputsPerOutput);
+        updateColors(result, nodes, edges, relevantInputsPerOutput[id]);
       }
     }
   });
