@@ -1,142 +1,13 @@
 import './style.css'
-import typescriptLogo from './typescript.svg'
-import viteLogo from '/vite.svg'
-import { setupCounter } from './counter.ts'
+// import typescriptLogo from './typescript.svg'
+// import viteLogo from '/vite.svg'
+// import { setupCounter } from './counter.ts'
 import { Network, type Node, type Edge } from 'vis-network';
 import { DataSet } from 'vis-data';
-
-// document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
-//   <div>
-//     <a href="https://vite.dev" target="_blank">
-//       <img src="${viteLogo}" class="logo" alt="Vite logo" />
-//     </a>
-//     <a href="https://www.typescriptlang.org/" target="_blank">
-//       <img src="${typescriptLogo}" class="logo vanilla" alt="TypeScript logo" />
-//     </a>
-//     <h1>Vite + TypeScript</h1>
-//     <div class="card">
-//       <button id="counter" type="button"></button>
-//     </div>
-//     <p class="read-the-docs">
-//       Click on the Vite and TypeScript logos to learn more
-//     </p>
-//   </div>
-// `
-
-// setupCounter(document.querySelector<HTMLButtonElement>('#counter')!)
-
-
-// document.querySelector<HTMLDivElement>('#app')!.innerHTML =`
-// <div id="network"></div>
-// `
-
-
-type LogicGateType = 'INPUT' | 'OUTPUT' | 'AND' | 'OR' | 'NOT' | 'XOR' | 'NAND' | 'NOR';
-
-interface LogicNode {
-  id: string;
-  level?: number
-  type: LogicGateType;
-  inputs: string[];
-  value?: boolean;
-}
-
-type LogicGraph = Record<string, LogicNode>;
-
-
-function simulateGraph(graph: LogicGraph, inputValues: Record<string, boolean>): Record<string, boolean> {
-  const values: Record<string, boolean> = {};
-
-  // Допоміжна функція для рекурсивного обчислення
-  function evaluate(id: string): boolean {
-    if (id in values) return values[id];
-
-    const node = graph[id];
-    if (!node) throw new Error(`Unknown node ID: ${id}`);
-
-    let result: boolean;
-
-    switch (node.type) {
-      case 'INPUT':
-        if (!(id in inputValues)) throw new Error(`Missing input value for ${id}`);
-        result = inputValues[id];
-        break;
-
-      case 'AND':
-        result = node.inputs.every(inputId => evaluate(inputId));
-        break;
-
-      case 'OR':
-        result = node.inputs.some(inputId => evaluate(inputId));
-        break;
-
-      case 'NOT':
-        if (node.inputs.length !== 1) throw new Error(`NOT gate ${id} must have exactly one input`);
-        result = !evaluate(node.inputs[0]);
-        break;
-
-      case 'XOR':
-        result = node.inputs.reduce((acc, inputId) => acc !== evaluate(inputId), false);
-        break;
-
-      case 'NAND':
-        result = !node.inputs.every(inputId => evaluate(inputId));
-        break;
-
-      case 'NOR':
-        result = !node.inputs.some(inputId => evaluate(inputId));
-        break;
-
-      case 'OUTPUT':
-        if (node.inputs.length !== 1) throw new Error(`OUTPUT node ${id} must have one input`);
-        result = evaluate(node.inputs[0]);
-        break;
-
-      default:
-        throw new Error(`Unsupported gate type: ${node.type}`);
-    }
-
-    values[id] = result;
-    return result;
-  }
-
-  // Обчислюємо всі вузли типу OUTPUT
-  for (const id in graph) {
-    if (graph[id].type === 'OUTPUT') {
-      evaluate(id);
-    }
-  }
-
-  return values;
-}
-
-
-// Основна функція для отримання всіх залежностей від OUTPUT
-function findDependenciesForOutput(
-  graph: Record<string, LogicNode>,
-  outputId: string
-): Set<string> {
-  //const dependencies = new Set<string>();
-  const visited = new Set<string>();
-  
-  // Рекурсивна функція для збору залежностей
-  function collectDependencies(
-    nodeId: string,
-    // visited: Set<string>
-  ) {
-    if (visited.has(nodeId)) return;
-    visited.add(nodeId);
-  
-    const node = graph[nodeId];
-    for (const inputId of node.inputs) {
-      collectDependencies(inputId);
-    }
-    console.log(visited)
-  }
-  
-  collectDependencies(outputId);
-  return visited;
-}
+import type { LogicNode, LogicGraph } from './classes.ts';
+import { findDependenciesForOutput, simulateGraph } from './logic.ts';
+import { graph4bitAdder, inputValues4bitAdder } from './graphs.ts';
+import { computeNodeLevels, computeNodeLevelsTopological } from './tools.ts';
 
 function updateColors(values: Record<string, boolean>, nodeList: DataSet<Node>, edgeList: DataSet<Edge>, relevantInputs?: Set<string> ) {
   const updated = Object.entries(values).map(([id, value]) => ({
@@ -156,167 +27,16 @@ function updateColors(values: Record<string, boolean>, nodeList: DataSet<Node>, 
     return {
       id: edge.id,
       color: { color: relevantInputs?.has(idt)? '#0300ccff' : (fromVal ? '#00cc00' : '#cc0000') }, // Зелений = 1, Червоний = 0
-      arrows: 'to' // Додатково можна вмикати стрілку
+      arrows: 'to'
     };
   });
 
   edgeList.update(updatedEdges);
 }
 
-// function computeNodeLevels(graph: Record<string, LogicNode>): Record<string, number> {
-//   const levels: Record<string, number> = {};
-
-//   function dfs(nodeId: string): number {
-//     if (levels[nodeId] !== undefined) return levels[nodeId];
-
-//     const node = graph[nodeId];
-//     if (!node) return 0;
-
-//     if (node.inputs.length === 0) {
-//       levels[nodeId] = 0;
-//     } else {
-//       levels[nodeId] = Math.max(...node.inputs.map(dfs)) + 1;
-//     }
-
-//     return levels[nodeId];
-//   }
-
-//   for (const id of Object.keys(graph)) {
-//     dfs(id);
-//   }
-
-//   return levels;
-// }
-
-function computeNodeLevels(graph: Record<string, LogicNode>): Record<string, number> {
-  const levels: Record<string, number> = {};
-  const visited = new Set<string>();
-
-  function dfs(nodeId: string, depth: number): void {
-    if (levels[nodeId] === undefined || depth > levels[nodeId]) {
-      levels[nodeId] = depth;
-    }
-
-    visited.add(nodeId);
-
-    for (const outputId of Object.keys(graph)) {
-      const output = graph[outputId];
-      if (output.inputs.includes(nodeId)) {
-        dfs(outputId, depth + 1);
-      }
-    }
-  }
-
-  // Стартуємо з усіх вузлів, які не мають inputs (входи)
-  for (const node of Object.values(graph)) {
-    if (node.inputs.length === 0) {
-      dfs(node.id, 0);
-    }
-  }
-
-  return levels;
-}
-
-function computeNodeLevelsTopological(graph: Record<string, LogicNode>): Record<string, number> {
-  const levels: Record<string, number> = {};
-  const inDegree: Record<string, number> = {};
-  const dependents: Record<string, string[]> = {};
-
-  // 1. Підрахунок вхідних ребер (in-degree)
-  for (const node of Object.values(graph)) {
-    inDegree[node.id] = node.inputs.length;
-    for (const input of node.inputs) {
-      if (!dependents[input]) {
-        dependents[input] = [];
-      }
-      dependents[input].push(node.id);
-    }
-  }
-
-  // 2. Черга вузлів без входів (вхідні вузли)
-  const queue: string[] = Object.keys(graph).filter(id => inDegree[id] === 0);
-
-  // 3. Ітеративна обробка вузлів у порядку "спочатку залежності"
-  while (queue.length > 0) {
-    const id = queue.shift()!;
-    const node = graph[id];
-
-    // Визначення рівня: max(всі level входів) + 1
-    if (node.inputs.length === 0) {
-      levels[id] = 0;
-    } else {
-      levels[id] = Math.max(...node.inputs.map(input => levels[input])) + 1;
-    }
-
-    // Оновлення залежних вузлів
-    for (const dependentId of dependents[id] || []) {
-      inDegree[dependentId]--;
-      if (inDegree[dependentId] === 0) {
-        queue.push(dependentId);
-      }
-    }
-  }
-
-  const maxLevel = Math.max(...Object.values(levels))
-
-  for (const node of Object.values(graph)) {
-    if (node.type === "OUTPUT") {
-      levels[node.id] = maxLevel;
-    }
-  }
-
-  return levels;
-}
-
-const graph: LogicGraph = {
-  A1: { id: "A1", level: 0, type: "INPUT", inputs: []},
-  A2: { id: "A2", level: 0, type: "INPUT", inputs: []},
-  A3: { id: "A3", level: 0, type: "INPUT", inputs: []},
-  A4: { id: "A4", level: 0, type: "INPUT", inputs: []},
-
-  B1: { id: "B1", level: 0, type: "INPUT", inputs: []},
-  B2: { id: "B2", level: 0, type: "INPUT", inputs: []},
-  B3: { id: "B3", level: 0, type: "INPUT", inputs: []},
-  B4: { id: "B4", level: 0, type: "INPUT", inputs: []},
-
-  CIN: { id: "CIN", level: 0, type: "INPUT", inputs: []},
-
-  S1X1: { id: "S1X1", type: "XOR", inputs: ["A1", "B1"]},
-  S1X2: { id: "S1X2", type: "XOR", inputs: ["S1X1", "CIN"]},
-  S1A1: { id: 'S1A1', type: 'AND', inputs: ["A1", "B1"]},
-  S1A2: { id: 'S1A2', type: 'AND', inputs: ["S1X1", "CIN"]},
-  S1R1: { id: 'S1R1', type: 'OR', inputs: ["S1A1", "S1A2"]},
-
-  S2X1: { id: "S2X1", type: "XOR", inputs: ["A2", "B2"]},
-  S2X2: { id: "S2X2", type: "XOR", inputs: ["S2X1", "S1R1"]},
-  S2A1: { id: 'S2A1', type: 'AND', inputs: ["A2", "B2"]},
-  S2A2: { id: 'S2A2', type: 'AND', inputs: ["S2X1", "S1R1"]},
-  S2R1: { id: 'S2R1', type: 'OR', inputs: ["S2A1", "S2A2"]},
-
-  S3X1: { id: "S3X1", type: "XOR", inputs: ["A3", "B3"]},
-  S3X2: { id: "S3X2", type: "XOR", inputs: ["S3X1", "S2R1"]},
-  S3A1: { id: 'S3A1', type: 'AND', inputs: ["A2", "B2"]},
-  S3A2: { id: 'S3A2', type: 'AND', inputs: ["S3X1", "S2R1"]},
-  S3R1: { id: 'S3R1', type: 'OR', inputs: ["S3A1", "S3A2"]},
-
-  S4X1: { id: "S4X1", type: "XOR", inputs: ["A4", "B4"]},
-  S4X2: { id: "S4X2", type: "XOR", inputs: ["S4X1", "S3R1"]},
-  S4A1: { id: 'S4A1', type: 'AND', inputs: ["A4", "B4"]},
-  S4A2: { id: 'S4A2', type: 'AND', inputs: ["S4X1", "S3R1"]},
-  S4R1: { id: 'S4R1', type: 'OR', inputs: ["S4A1", "S4A2"]},
-
-  OUT1: { id: 'OUT1', type: 'OUTPUT', inputs: ['S1X2'] },
-  OUT2: { id: 'OUT2', type: 'OUTPUT', inputs: ['S2X2'] },
-  OUT3: { id: 'OUT3', type: 'OUTPUT', inputs: ['S3X2'] },
-  OUT4: { id: 'OUT4', type: 'OUTPUT', inputs: ['S4X2'] },
-  COUT: { id: 'COUT', type: 'OUTPUT', inputs: ['S4R1'] },
-
-};
-
-let inputValues: Record<string, boolean> = { A1: false, A2: false, A3: false, A4: false, B1: false, B2: false, B3: false, B4: false, CIN: false };
-
-function main() {
-  const levels = computeNodeLevelsTopological(graph);
+function main(graph: Record<string, LogicNode>, inputValues: Record<string, boolean>) {
+  // const levels = computeNodeLevelsTopological(graph);
+  const levels = computeNodeLevels(graph);
 
   const nodesArray: Node[] = Object.values(graph).map(n => ({
     id: n.id,
@@ -325,21 +45,6 @@ function main() {
     color: { background: '#f0a0a0' },
     level: levels[n.id]
   }));
-
-  // const nodesArray: Node[] = Object.values(graph).map(n => {
-  //   const base: Node = {
-  //     id: n.id,
-  //     label: (n.type != "INPUT" && n.type != "OUTPUT" ? n.type : n.id),
-  //     shape: 'box',
-  //     color: { background: '#f0a0a0' },
-  //     level: n.level
-  //   };
-  //   // if (n.level !== undefined) {
-  //   //   (base as any).level = n.level;
-  //   // }
-  //   return base;
-    
-  // });
 
   //console.log(nodesArray)
 
@@ -361,20 +66,18 @@ function main() {
     layout: {
       hierarchical: {
         enabled: true,
-        direction: 'UD', // або 'UD' (up-down)
+        direction: 'UD', 
         sortMethod: 'directed',
         levelSeparation: 40,
         nodeSpacing: 80,
       }
     },
     edges: {
-      smooth: false // 🔧 обов’язково для прямих ліній
+      smooth: false 
     }
   };
 
   const network = new Network(container, { nodes, edges }, options);
-  
-
   let relevantInputsPerOutput: Record<string, Set<string>> = {};
 
   network.on('click', function (params) {
@@ -400,7 +103,8 @@ function main() {
   const result = simulateGraph(graph, inputValues);
   updateColors(result, nodes, edges);
 }
-main();
+
+main(graph4bitAdder, inputValues4bitAdder);
 
 
 // const graph: LogicGraph = {
