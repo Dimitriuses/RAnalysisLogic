@@ -95,30 +95,6 @@ export function findDependenciesForOutput(
   return visited;
 }
 
-// export function generateInputs(n: number): {
-//   graph: LogicGraph;
-//   inputValues: Record<string, boolean>;
-// } {
-//   const graph: LogicGraph = {};
-//   const inputValues: Record<string, boolean> = {};
-
-//   for (let i = 1; i <= n; i++) {
-//     const aid = `A${i}`;
-//     const bid = `B${i}`;
-
-//     graph[aid] = { id: aid, type: 'INPUT', inputs: [] };
-//     graph[bid] = { id: bid, type: 'INPUT', inputs: [] };
-
-//     inputValues[aid] = false;
-//     inputValues[bid] = false;
-//   }
-
-//   graph['CIN'] = { id: 'CIN', type: 'INPUT', inputs: [] };
-//   inputValues['CIN'] = false;
-
-//   return { graph, inputValues };
-// }
-
 export function generateInputs(graph: Record<string, LogicNode>): Record<string, boolean>{
   const inputValues: Record<string, boolean> = {};
   for (const id in graph) {

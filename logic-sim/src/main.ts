@@ -9,7 +9,6 @@ import { findDependenciesForOutput, generateInputs, simulateGraph } from './logi
 import { graph4bitAdder, inputValues4bitAdder } from './graphs.ts';
 import { computeNodeLevels, computeNodeLevelsTopological } from './tools.ts';
 import { parseCircuitFile } from './shared/parcer.ts';
-// import * as fs from 'fs';
 
 const fileInput = document.getElementById('fileInput') as HTMLInputElement;
 
@@ -109,12 +108,6 @@ function main(graph: Record<string, LogicNode>, inputValues: Record<string, bool
 }
 
 // main(graph4bitAdder, generateInputs(graph4bitAdder));
-
-// const fileContent = fs.readFileSync('./shared/64 Bit Adder.txt', 'utf-8');
-// const fgraph = parseCircuitFile(fileContent);
-// console.log(fgraph)
-
-// console.log(fileInput)
 
 fileInput.addEventListener('change', (event) => {
   const file = fileInput.files?.[0];

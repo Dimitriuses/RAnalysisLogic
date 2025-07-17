@@ -109,5 +109,4 @@ button:focus-visible {
 #fileInput {
   position: relative;
   z-index: 10;
-  /* background-color: white; для видимості на темному фоні */
 }
