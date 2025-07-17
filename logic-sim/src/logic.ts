@@ -9,6 +9,7 @@ export function simulateGraph(graph: LogicGraph, inputValues: Record<string, boo
 
     const node = graph[id];
     if (!node) throw new Error(`Unknown node ID: ${id}`);
+    // console.log(`in ${id} have ${node.inputs[0]} and ${node.inputs[1]}`)
 
     let result: boolean;
 
@@ -87,9 +88,43 @@ export function findDependenciesForOutput(
     for (const inputId of node.inputs) {
       collectDependencies(inputId);
     }
-    console.log(visited)
+    // console.log(visited)
   }
   
   collectDependencies(outputId);
   return visited;
+}
+
+// export function generateInputs(n: number): {
+//   graph: LogicGraph;
+//   inputValues: Record<string, boolean>;
+// } {
+//   const graph: LogicGraph = {};
+//   const inputValues: Record<string, boolean> = {};
+
+//   for (let i = 1; i <= n; i++) {
+//     const aid = `A${i}`;
+//     const bid = `B${i}`;
+
+//     graph[aid] = { id: aid, type: 'INPUT', inputs: [] };
+//     graph[bid] = { id: bid, type: 'INPUT', inputs: [] };
+
+//     inputValues[aid] = false;
+//     inputValues[bid] = false;
+//   }
+
+//   graph['CIN'] = { id: 'CIN', type: 'INPUT', inputs: [] };
+//   inputValues['CIN'] = false;
+
+//   return { graph, inputValues };
+// }
+
+export function generateInputs(graph: Record<string, LogicNode>): Record<string, boolean>{
+  const inputValues: Record<string, boolean> = {};
+  for (const id in graph) {
+    if (graph[id].type === 'INPUT') {
+      inputValues[id] = false
+    }
+  }
+  return inputValues
 }

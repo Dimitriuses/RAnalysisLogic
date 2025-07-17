@@ -10,6 +10,7 @@ export function computeNodeLevels(graph: Record<string, LogicNode>): Record<stri
     }
 
     visited.add(nodeId);
+    console.log(nodeId, depth, visited.size);
 
     for (const outputId of Object.keys(graph)) {
       const output = graph[outputId];

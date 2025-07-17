@@ -1,17 +1,17 @@
 import type { LogicGraph } from "./classes";
 
 export const graph4bitAdder: LogicGraph = {
-  A1: { id: "A1", level: 0, type: "INPUT", inputs: []},
-  A2: { id: "A2", level: 0, type: "INPUT", inputs: []},
-  A3: { id: "A3", level: 0, type: "INPUT", inputs: []},
-  A4: { id: "A4", level: 0, type: "INPUT", inputs: []},
+  A1: { id: "A1", type: "INPUT", inputs: []},
+  A2: { id: "A2", type: "INPUT", inputs: []},
+  A3: { id: "A3", type: "INPUT", inputs: []},
+  A4: { id: "A4", type: "INPUT", inputs: []},
 
-  B1: { id: "B1", level: 0, type: "INPUT", inputs: []},
-  B2: { id: "B2", level: 0, type: "INPUT", inputs: []},
-  B3: { id: "B3", level: 0, type: "INPUT", inputs: []},
-  B4: { id: "B4", level: 0, type: "INPUT", inputs: []},
+  B1: { id: "B1", type: "INPUT", inputs: []},
+  B2: { id: "B2", type: "INPUT", inputs: []},
+  B3: { id: "B3", type: "INPUT", inputs: []},
+  B4: { id: "B4", type: "INPUT", inputs: []},
 
-  CIN: { id: "CIN", level: 0, type: "INPUT", inputs: []},
+  CIN: { id: "CIN", type: "INPUT", inputs: []},
 
   S1X1: { id: "S1X1", type: "XOR", inputs: ["A1", "B1"]},
   S1X2: { id: "S1X2", type: "XOR", inputs: ["S1X1", "CIN"]},

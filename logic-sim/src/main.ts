@@ -2,12 +2,16 @@ import './style.css'
 // import typescriptLogo from './typescript.svg'
 // import viteLogo from '/vite.svg'
 // import { setupCounter } from './counter.ts'
-import { Network, type Node, type Edge } from 'vis-network';
+import { Network, type Node, type Edge, type Options } from 'vis-network';
 import { DataSet } from 'vis-data';
 import type { LogicNode, LogicGraph } from './classes.ts';
-import { findDependenciesForOutput, simulateGraph } from './logic.ts';
+import { findDependenciesForOutput, generateInputs, simulateGraph } from './logic.ts';
 import { graph4bitAdder, inputValues4bitAdder } from './graphs.ts';
 import { computeNodeLevels, computeNodeLevelsTopological } from './tools.ts';
+import { parseCircuitFile } from './shared/parcer.ts';
+// import * as fs from 'fs';
+
+const fileInput = document.getElementById('fileInput') as HTMLInputElement;
 
 function updateColors(values: Record<string, boolean>, nodeList: DataSet<Node>, edgeList: DataSet<Edge>, relevantInputs?: Set<string> ) {
   const updated = Object.entries(values).map(([id, value]) => ({
@@ -36,14 +40,14 @@ function updateColors(values: Record<string, boolean>, nodeList: DataSet<Node>, 
 
 function main(graph: Record<string, LogicNode>, inputValues: Record<string, boolean>) {
   // const levels = computeNodeLevelsTopological(graph);
-  const levels = computeNodeLevels(graph);
+  // const levels = computeNodeLevels(graph);
 
   const nodesArray: Node[] = Object.values(graph).map(n => ({
     id: n.id,
     label: (n.type != "INPUT" && n.type != "OUTPUT" ? n.type : n.id),
     shape: 'box',
     color: { background: '#f0a0a0' },
-    level: levels[n.id]
+    // level: levels[n.id]
   }));
 
   //console.log(nodesArray)
@@ -61,7 +65,7 @@ function main(graph: Record<string, LogicNode>, inputValues: Record<string, bool
   const nodes = new DataSet<Node>(nodesArray);
   const edges = new DataSet<Edge>(edgesArray);
 
-  const options = {
+  const options: Options = {
     physics: false,
     layout: {
       hierarchical: {
@@ -77,7 +81,7 @@ function main(graph: Record<string, LogicNode>, inputValues: Record<string, bool
     }
   };
 
-  const network = new Network(container, { nodes, edges }, options);
+  const network = new Network(container, { nodes, edges }, options); // 'vis-network'
   let relevantInputsPerOutput: Record<string, Set<string>> = {};
 
   network.on('click', function (params) {
@@ -104,7 +108,32 @@ function main(graph: Record<string, LogicNode>, inputValues: Record<string, bool
   updateColors(result, nodes, edges);
 }
 
-main(graph4bitAdder, inputValues4bitAdder);
+// main(graph4bitAdder, generateInputs(graph4bitAdder));
+
+// const fileContent = fs.readFileSync('./shared/64 Bit Adder.txt', 'utf-8');
+// const fgraph = parseCircuitFile(fileContent);
+// console.log(fgraph)
+
+// console.log(fileInput)
+
+fileInput.addEventListener('change', (event) => {
+  const file = fileInput.files?.[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    const text = reader.result as string;
+    const graph = parseCircuitFile(text);
+    console.log(generateInputs(graph))
+    console.log('Parsed graph:', graph);
+    main(graph, generateInputs(graph))
+  };
+  reader.readAsText(file);
+});
+
+// fileInput.addEventListener('click', () => {
+//   console.log('Клік по input відбувся!');
+// });
 
 
 // const graph: LogicGraph = {
