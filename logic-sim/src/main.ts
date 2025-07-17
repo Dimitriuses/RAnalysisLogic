@@ -188,8 +188,19 @@ document.getElementById('applyInputs')!.addEventListener('click', () => {
 // Run simulation and update output field
 document.getElementById('simulateBtn')!.addEventListener('click', () => {
   if (!graph) return;
-  const result = simulateGraph(graph, inputValues);
-  updateBitOutputDisplay(result);
+  // const result = simulateGraph(graph, inputValues);
+  // updateBitOutputDisplay(result);
+  const data = {
+    inputs: Object.values(graph).filter(v => v.type == "INPUT").map(v => v.id),
+    outputs: Object.values(graph).filter(v => v.type == "OUTPUT").map(v => v.id),
+    gates: Object.values(graph)
+  }
+  const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'logic-graph2.json';
+  a.click();
 });
 
 

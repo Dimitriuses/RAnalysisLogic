@@ -1,0 +1,49 @@
+{
+	"inputs":["A1","A2","A3","A4","B1","B2","B3","B4","CIN"],
+	"outputs":["OUT1","OUT2","OUT3","OUT4","COUT"],
+	"gates":[
+		{"id":"A1","type":"INPUT","inputs":[]},
+		{"id":"A2","type":"INPUT","inputs":[]},
+		{"id":"A3","type":"INPUT","inputs":[]},
+		{"id":"A4","type":"INPUT","inputs":[]},
+		{"id":"B1","type":"INPUT","inputs":[]},
+		{"id":"B2","type":"INPUT","inputs":[]},
+		{"id":"B3","type":"INPUT","inputs":[]},
+		{"id":"B4","type":"INPUT","inputs":[]},
+		{"id":"CIN","type":"INPUT","inputs":[]},
+		{"id":"S1X1","type":"XOR","inputs":["A1","B1"]},
+		{"id":"S1X2","type":"XOR","inputs":["S1X1","CIN"]},
+		{"id":"S1A1","type":"AND","inputs":["A1","B1"]},
+		{"id":"S1A2","type":"AND","inputs":["S1X1","CIN"]},
+		{"id":"S1R1","type":"OR","inputs":["S1A1","S1A2"]},
+		{"id":"S2X1","type":"XOR","inputs":["A2","B2"]},
+		{"id":"S2X2","type":"XOR","inputs":["S2X1","S1R1"]},
+		{"id":"S2A1","type":"AND","inputs":["A2","B2"]},
+		{"id":"S2A2","type":"AND","inputs":["S2X1","S1R1"]},
+		{"id":"S2R1","type":"OR","inputs":["S2A1","S2A2"]},
+		{"id":"S3X1","type":"XOR","inputs":["A3","B3"]},
+		{"id":"S3X2","type":"XOR","inputs":["S3X1","S2R1"]},
+		{"id":"S3A1","type":"AND","inputs":["A2","B2"]},
+		{"id":"S3A2","type":"AND","inputs":["S3X1","S2R1"]},
+		{"id":"S3R1","type":"OR","inputs":["S3A1","S3A2"]},
+		{"id":"S4X1","type":"XOR","inputs":["A4","B4"]},
+		{"id":"S4X2","type":"XOR","inputs":["S4X1","S3R1"]},
+		{"id":"S4A1","type":"AND","inputs":["A4","B4"]},
+		{"id":"S4A2","type":"AND","inputs":["S4X1","S3R1"]},
+		{"id":"S4R1","type":"OR","inputs":["S4A1","S4A2"]},
+		{"id":"OUT1","type":"OUTPUT","inputs":["S1X2"]},
+		{"id":"OUT2","type":"OUTPUT","inputs":["S2X2"]},
+		{"id":"OUT3","type":"OUTPUT","inputs":["S3X2"]},
+		{"id":"OUT4","type":"OUTPUT","inputs":["S4X2"]},
+		{"id":"COUT","type":"OUTPUT","inputs":["S4R1"]}
+	],
+	"fixed_inputs":{
+		"A1": true, "A2": false,"A3": false,"A4": true,
+		"B1": false,"B2": true,"B3": false,"B4": false,
+		"CIN": false
+	},
+	"fixed_outputs":{
+		"OUT1": true, "OUT2": false,"OUT3": false,"OUT4": true,
+		"COUT": false
+	}
+}

@@ -126,3 +126,8 @@ button:focus-visible {
   position: relative;
   z-index: 10;
 }
+
+#simulateBtn {
+  position: relative;
+  z-index: 10;
+}
