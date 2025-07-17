@@ -51,6 +51,7 @@ h1 {
   left: 0;
   right: 0;
   bottom: 0;
+  /* z-index: -1; */
 }
 
 .logo {
@@ -107,6 +108,21 @@ button:focus-visible {
 }
 
 #fileInput {
+  position: relative;
+  z-index: 10;
+}
+
+#bitInput {
+  position: relative;
+  z-index: 10;
+}
+
+#bitOutput {
+  position: relative;
+  z-index: 10;
+}
+
+#applyInputs {
   position: relative;
   z-index: 10;
 }

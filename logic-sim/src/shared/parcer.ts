@@ -8,7 +8,7 @@ function mapGateType(rawType: string): LogicGateType {
     case 'XOR': return 'XOR';
     case 'AND': return 'AND';
     case 'OR': return 'OR';
-    case 'NOT': return 'NOT';
+    case 'INV': return 'NOT';
     case 'NAND': return 'NAND';
     case 'NOR': return 'NOR';
     default: throw new Error(`Unknown gate type: ${rawType}`);
@@ -28,22 +28,32 @@ export function parseCircuitFile(content: string): LogicGraph {
   const outputConfig = lines[2].split(' ').map(Number);
 
   // === INPUT wires ===
-  const inputWireIds: string[] = [];
-  let offset = 0;
-  for (let i = 1; i < inputConfig.length; i++) {
-    const count = inputConfig[i];
-    for (let j = 0; j < count; j++) {
-      inputWireIds.push((offset + j).toString());
-    }
-    offset += count;
-  }
+  // const inputWireIds: string[] = [];
+  // let offset = 0;
+  // for (let i = 1; i < inputConfig.length; i++) {
+  //   const count = inputConfig[i];
+  //   for (let j = 0; j < count; j++) {
+  //     inputWireIds.push((offset + j).toString());
+  //   }
+  //   offset += count;
+  // }
 
-  const outputCount = outputConfig[1];
-  const outputWireStart = totalWires - outputCount;
-  const outputWireIds = new Set(
-    Array.from({ length: outputCount }, (_, i) => (outputWireStart + i).toString())
-  );
-
+  
+  // const outputCount = outputConfig[1];
+  // const outputWireStart = totalWires - outputCount;
+  // const outputWireIds = new Set(
+    //   Array.from({ length: outputCount }, (_, i) => (outputWireStart + i).toString())
+    // );
+    
+    const inputCount = inputConfig[0]; // 512
+    const outputCount = inputConfig[2]; // 256
+  
+    const inputWireIds = Array.from({ length: inputCount }, (_, i) => i.toString());
+    const outputWireStart = totalWires - outputCount;
+    const outputWireIds = new Set(
+      Array.from({ length: outputCount }, (_, i) => (outputWireStart + i).toString())
+    );
+    
   // === GATES ===
   let gateIndex = 0;
 

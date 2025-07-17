@@ -104,3 +104,27 @@ export function generateInputs(graph: Record<string, LogicNode>): Record<string,
   }
   return inputValues
 }
+
+export function settupInputs(inputs: Record<string, boolean>, setupString: string ): Record<string, boolean>{
+  const inputValues: Record<string, boolean> = {};
+  const keys = Object.keys(inputs).sort((a, b) => {
+    const aNum = parseInt(a.split('_')[1], 10);
+    const bNum = parseInt(b.split('_')[1], 10);
+    return aNum - bNum;
+  });
+  keys.forEach((v,i) => {
+    inputValues[v] = setupString[i] === "1" 
+  })
+  console.log(keys);
+  return inputValues
+}
+
+export function getOutputs(graph: Record<string, LogicNode>, results: Record<string, boolean> ): Record<string, boolean>{
+  const output: Record<string, boolean> = {}
+  for (const id in graph) {
+    if (graph[id].type === 'OUTPUT') {
+      output[id] = results[id];
+    }
+  }
+  return output
+}
