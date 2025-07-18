@@ -128,3 +128,13 @@ export function getOutputs(graph: Record<string, LogicNode>, results: Record<str
   }
   return output
 }
+
+export function getInputs(graph: Record<string, LogicNode>, results: Record<string, boolean> ): Record<string, boolean>{
+  const output: Record<string, boolean> = {}
+  for (const id in graph) {
+    if (graph[id].type === 'INPUT') {
+      output[id] = results[id];
+    }
+  }
+  return output
+}

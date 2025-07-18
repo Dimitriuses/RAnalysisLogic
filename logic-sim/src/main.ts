@@ -5,10 +5,12 @@ import './style.css'
 import { Network, type Node, type Edge, type Options } from 'vis-network';
 import { DataSet } from 'vis-data';
 import type { LogicNode, LogicGraph } from './classes.ts';
-import { findDependenciesForOutput, generateInputs, getOutputs, settupInputs, simulateGraph } from './logic.ts';
+import { findDependenciesForOutput, generateInputs, getInputs, getOutputs, settupInputs, simulateGraph } from './logic.ts';
 import { graph4bitAdder, inputValues4bitAdder } from './graphs.ts';
 import { computeNodeLevels, computeNodeLevelsTopological } from './tools.ts';
 import { parseCircuitFile } from './shared/parcer.ts';
+import { convertGraphToCircuit, sendToSolver } from './shared/shared.ts';
+
 
 const fileInput = document.getElementById('fileInput') as HTMLInputElement;
 let inputIds: string[] = [];
@@ -16,6 +18,11 @@ let outputIds: string[] = [];
 
 let graph: LogicGraph;
 let inputValues: Record<string, boolean> = {};
+let outputValues: Record<string, boolean> = {};
+
+const container = document.getElementById('app')!;
+let nodes: DataSet<Node> = new DataSet<Node>();
+let edges: DataSet<Edge> = new DataSet<Edge>();
 
 
 function updateColors(values: Record<string, boolean>, nodeList: DataSet<Node>, edgeList: DataSet<Edge>, relevantInputs?: Set<string> ) {
@@ -66,9 +73,9 @@ function drawGraph(graph: Record<string, LogicNode>, inputValues: Record<string,
     }))
   );
 
-  const container = document.getElementById('app')!;
-  const nodes = new DataSet<Node>(nodesArray);
-  const edges = new DataSet<Edge>(edgesArray);
+  // const container = document.getElementById('app')!;
+  nodes = new DataSet<Node>(nodesArray);
+  edges = new DataSet<Edge>(edgesArray);
 
   const options: Options = {
     physics: false,
@@ -96,7 +103,7 @@ function drawGraph(graph: Record<string, LogicNode>, inputValues: Record<string,
         inputValues[id] = !inputValues[id];
         const result = simulateGraph(graph, inputValues);
         updateColors(result, nodes, edges);
-        updateBitOutputDisplay(getOutputs(graph, result))
+        updateValues(result);
       }
       if (graph[id]?.type === "OUTPUT") {
         const deps = findDependenciesForOutput(graph, id);
@@ -113,7 +120,14 @@ function drawGraph(graph: Record<string, LogicNode>, inputValues: Record<string,
   const result = simulateGraph(graph, inputValues);
   // console.log(result)
   updateColors(result, nodes, edges);
-  updateBitOutputDisplay(getOutputs(graph, result))
+  updateValues(result);
+}
+
+function updateValues(result: Record<string, boolean>){
+  outputValues = getOutputs(graph, result);
+  inputValues = getInputs(graph, result);
+  updateBitInputDisplay(inputValues);
+  updateBitOutputDisplay(outputValues);
 }
 
 inputValues = generateInputs(graph4bitAdder)
@@ -150,21 +164,18 @@ document.getElementById('fileInput')!.addEventListener('change', async (e) => {
   const text = await file.text();
   graph = parseCircuitFile(text);
 
-  inputIds = Object.values(graph).filter(n => n.type === 'INPUT').map(n => n.id).sort();
-  outputIds = Object.values(graph).filter(n => n.type === 'OUTPUT').map(n => n.id).sort();
+  // inputIds = Object.values(graph).filter(n => n.type === 'INPUT').map(n => n.id).sort();
+  // outputIds = Object.values(graph).filter(n => n.type === 'OUTPUT').map(n => n.id).sort();
 
   // ініціалізуємо всі input як false
-  inputValues = {};
-  for (const id of inputIds) {
-    inputValues[id] = false;
-  }
+  inputValues = generateInputs(graph)
 
-  updateBitInputDisplay();
+  updateBitInputDisplay(inputValues);
   drawGraph(graph, inputValues);
 });
 
-function updateBitInputDisplay() {
-  const bitStr = inputIds.map(id => (inputValues[id] ? '1' : '0')).join('');
+function updateBitInputDisplay(inputs: Record<string, boolean>) {
+  const bitStr = Object.values(inputs).map(value => { return value ? '1' : '0' }).join('');
   (document.getElementById('bitInput') as HTMLInputElement).value = bitStr;
 }
 
@@ -185,7 +196,8 @@ document.getElementById('applyInputs')!.addEventListener('click', () => {
   drawGraph(graph, inputValues)
 });
 
-// Run simulation and update output field
+
+
 document.getElementById('downloadBtn')!.addEventListener('click', () => {
   if (!graph) return;
   // const result = simulateGraph(graph, inputValues);
@@ -202,6 +214,76 @@ document.getElementById('downloadBtn')!.addEventListener('click', () => {
   a.download = 'logic-graph2.json';
   a.click();
 });
+
+document.getElementById('solveBtn')!.addEventListener('click', () => {
+  if(!graph) return;
+
+  const circuit = convertGraphToCircuit(graph)
+  // const fixed_inputs: Record<string, boolean> = {} as Record<string, boolean>;
+  // const fixed_outputs: Record<string, boolean> = {} as Record<string, boolean>;
+  // Object.values(graph).filter(v => v.type == "INPUT").forEach(v=> {fixed_inputs[v.id] = v?.value || false});
+  // Object.values(graph).filter(v => v.type == "OUTPUT").forEach( v=> {fixed_inputs[v.id] = v?.value || false}); 
+  circuit.fixed_inputs = inputValues;
+  // circuit.fixed_outputs = fixed_outputs;
+  // console.log("ok")
+  sendToSolver(circuit).then(data => {
+    console.log(data)
+  })
+
+})
+
+document.getElementById('solveOutputsBtn')!.addEventListener('click', () => {
+  if(!graph) return;
+
+  const circuit = convertGraphToCircuit(graph)
+  // const fixed_inputs: Record<string, boolean> = {} as Record<string, boolean>;
+  // const fixed_outputs: Record<string, boolean> = {} as Record<string, boolean>;
+  // Object.values(graph).filter(v => v.type == "INPUT").forEach(v=> {fixed_inputs[v.id] = v?.value || false});
+  // Object.values(graph).filter(v => v.type == "OUTPUT").forEach( v=> {fixed_inputs[v.id] = v?.value || false}); 
+  // circuit.fixed_inputs = inputValues;
+  circuit.fixed_outputs = outputValues;
+  // console.log("ok")
+  sendToSolver(circuit).then(data => {
+    console.log(data);
+    populateDropdown(data.solution)
+  })
+
+})
+
+function populateDropdown(solutions: Record<string, boolean>[]) {
+  const selector = document.getElementById("solutionSelector") as HTMLSelectElement;
+  selector.innerHTML = "";
+
+  solutions.forEach((solution, index) => {
+    const option = document.createElement("option");
+    option.value = index.toString();
+    option.textContent = `Варіант ${index + 1} \t${Object.keys(solution).filter(k => graph[k].type == "INPUT").map(k => solution[k]? "1" : "0").join("")}`;
+    selector.appendChild(option);
+  });
+
+  selector.addEventListener("change", () => {
+    const selectedIndex = parseInt(selector.value);
+    displaySolution(solutions[selectedIndex]);
+  });
+
+  // Відразу показати перший варіант
+  if (solutions.length > 0) {
+    displaySolution(solutions[0]);
+  }
+}
+
+function displaySolution(solution: Record<string, boolean>) {
+  updateColors(solution, nodes, edges);
+  updateValues(solution);
+  // const details = document.getElementById("solutionDetails")!;
+  // details.innerHTML = "";
+
+  // Object.entries(solution).forEach(([key, value]) => {
+  //   const p = document.createElement("p");
+  //   p.textContent = `${key}: ${value ? "1" : "0"}`;
+  //   details.appendChild(p);
+  // });
+}
 
 
 // fileInput.addEventListener('click', () => {
