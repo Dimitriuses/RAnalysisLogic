@@ -1,10 +1,11 @@
 import sys
 import os
 
-
+# & "C:\Program Files\Python310\python.exe" -m uvicorn PyZ3Server.server:app --reload
 # sys.path.append(os.path.dirname(__file__))  # Додай поточну папку в шлях
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Dict, Union
 
@@ -13,6 +14,18 @@ from PyZ3Server.parcer import convert_to_z3
 from PyZ3Server.solver import solve_all, solve_circuit
 
 app = FastAPI()
+
+origins = [
+    "http://localhost:5173",  # або порт, який ти використовуєш у Vite
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,  # Можна поставити ["*"] для всіх джерел (небажано в продакшені)
+    allow_credentials=True,
+    allow_methods=["*"],  # Дозволити всі методи: GET, POST, OPTIONS, і т.д.
+    allow_headers=["*"],  # Дозволити будь-які заголовки
+)
 
 # print(dir(z3))
 
