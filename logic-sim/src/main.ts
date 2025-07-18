@@ -186,7 +186,7 @@ document.getElementById('applyInputs')!.addEventListener('click', () => {
 });
 
 // Run simulation and update output field
-document.getElementById('simulateBtn')!.addEventListener('click', () => {
+document.getElementById('downloadBtn')!.addEventListener('click', () => {
   if (!graph) return;
   // const result = simulateGraph(graph, inputValues);
   // updateBitOutputDisplay(result);
