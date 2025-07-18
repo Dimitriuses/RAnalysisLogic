@@ -27,7 +27,7 @@ export const graph4bitAdder: LogicGraph = {
 
   S3X1: { id: "S3X1", type: "XOR", inputs: ["A3", "B3"]},
   S3X2: { id: "S3X2", type: "XOR", inputs: ["S3X1", "S2R1"]},
-  S3A1: { id: 'S3A1', type: 'AND', inputs: ["A2", "B2"]},
+  S3A1: { id: 'S3A1', type: 'AND', inputs: ["A3", "B3"]},
   S3A2: { id: 'S3A2', type: 'AND', inputs: ["S3X1", "S2R1"]},
   S3R1: { id: 'S3R1', type: 'OR', inputs: ["S3A1", "S3A2"]},
 
