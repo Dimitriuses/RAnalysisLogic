@@ -95,6 +95,53 @@ export function findDependenciesForOutput(
   return visited;
 }
 
+export function splitIntoModules(graph: LogicGraph, maxInputs = 8, maxOutputs = 8): LogicGraph[] {
+  const visited = new Set<string>();
+  const modules: LogicGraph[] = [];
+
+  for (const nodeId in graph) {
+    if (visited.has(nodeId)) continue;
+
+    const module: LogicGraph = {};
+    const queue = [nodeId];
+    const inputs = new Set<string>();
+    const outputs = new Set<string>();
+
+    while (queue.length > 0) {
+      const currentId = queue.shift()!;
+      if (visited.has(currentId)) continue;
+
+      const node = graph[currentId];
+      module[currentId] = node;
+      visited.add(currentId);
+
+      // Записуємо inputs
+      for (const inputId of node.inputs) {
+        if (!visited.has(inputId)) {
+          inputs.add(inputId);
+        }
+      }
+
+      // Додаємо наступні вузли, якщо в модулі не перевищено ліміти
+      const children = Object.values(graph).filter(n => n.inputs.includes(currentId));
+      for (const child of children) {
+        if (
+          inputs.size <= maxInputs &&
+          outputs.size <= maxOutputs &&
+          !visited.has(child.id)
+        ) {
+          queue.push(child.id);
+          outputs.add(child.id);
+        }
+      }
+    }
+
+    modules.push(module);
+  }
+
+  return modules;
+}
+
 export function generateInputs(graph: Record<string, LogicNode>): Record<string, boolean>{
   const inputValues: Record<string, boolean> = {};
   for (const id in graph) {

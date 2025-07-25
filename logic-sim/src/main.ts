@@ -5,9 +5,9 @@ import './style.css'
 import { Network, type Node, type Edge, type Options } from 'vis-network';
 import { DataSet } from 'vis-data';
 import type { LogicNode, LogicGraph } from './classes.ts';
-import { findDependenciesForOutput, generateInputs, getInputs, getOutputs, settupInputs, simulateGraph } from './logic.ts';
+import { findDependenciesForOutput, generateInputs, getInputs, getOutputs, settupInputs, simulateGraph, splitIntoModules } from './logic.ts';
 import { graph4bitAdder, inputValues4bitAdder } from './graphs.ts';
-import { computeNodeLevels, computeNodeLevelsTopological } from './tools.ts';
+import { computeNodeLevels, computeNodeLevelsFast, computeNodeLevelsTopological, groupByModules, groupNodesByLevel, tarjan } from './tools.ts';
 import { parseCircuitFile } from './shared/parcer.ts';
 import { convertGraphToCircuit, sendToSolver } from './shared/shared.ts';
 
@@ -23,6 +23,8 @@ let outputValues: Record<string, boolean> = {};
 const container = document.getElementById('app')!;
 let nodes: DataSet<Node> = new DataSet<Node>();
 let edges: DataSet<Edge> = new DataSet<Edge>();
+let levels: Record<string, number> = {};
+
 
 
 function updateColors(values: Record<string, boolean>, nodeList: DataSet<Node>, edgeList: DataSet<Edge>, relevantInputs?: Set<string> ) {
@@ -53,13 +55,14 @@ function updateColors(values: Record<string, boolean>, nodeList: DataSet<Node>, 
 function drawGraph(graph: Record<string, LogicNode>, inputValues: Record<string, boolean>) {
   // const levels = computeNodeLevelsTopological(graph);
   // const levels = computeNodeLevels(graph);
+  levels = computeNodeLevelsFast(graph);
 
   const nodesArray: Node[] = Object.values(graph).map(n => ({
     id: n.id,
     label: (n.type != "INPUT" && n.type != "OUTPUT" ? n.type : n.id),
     shape: 'box',
     color: { background: '#f0a0a0' },
-    // level: levels[n.id]
+    level: levels[n.id]
   }));
 
   //console.log(nodesArray)
@@ -163,6 +166,12 @@ document.getElementById('fileInput')!.addEventListener('change', async (e) => {
 
   const text = await file.text();
   graph = parseCircuitFile(text);
+
+  // console.log(splitIntoModules(graph));
+
+  const components = groupByModules(graph, levels);
+  console.log("Модулів знайдено:", components.length);
+  console.log(components)
 
   // inputIds = Object.values(graph).filter(n => n.type === 'INPUT').map(n => n.id).sort();
   // outputIds = Object.values(graph).filter(n => n.type === 'OUTPUT').map(n => n.id).sort();

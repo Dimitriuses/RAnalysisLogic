@@ -9,3 +9,10 @@ export interface LogicNode {
 }
 
 export type LogicGraph = Record<string, LogicNode>;
+
+export interface ModuleData {
+  id: string;
+  nodes: LogicNode[]; 
+  inputs: string[]; 
+  outputs: string[]; 
+}
