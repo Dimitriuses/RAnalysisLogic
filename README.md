@@ -11,7 +11,7 @@ The idea: represent a hash function as a plain boolean circuit (AND/OR/XOR/NOT/N
 ## Structure
 
 - **`logic-sim/`** — TypeScript + Vite frontend.
-  - Parses circuit files in **Bristol Fashion** format (gate count, wire count, input/output wire ranges, then a gate list — the standard format used in MPC/garbled-circuit research).
+  - Parses circuit files in the **Bristol circuit format** (a counts line, an `<input-wires> <party-2-wires> <output-wires>` line, then a gate list of `XOR`/`AND`/`INV`/… — the classic format from MPC/garbled-circuit research). See [Generating circuit files](#generating-circuit-files).
   - Renders the circuit as an interactive graph ([vis-network](https://github.com/visjs/vis-network)): click an `INPUT` node to flip its bit and watch values propagate; click an `OUTPUT` node to highlight which inputs it actually depends on.
   - Simulates the circuit fully client-side.
   - Can group the circuit into smaller sub-modules for local truth-table inspection.
@@ -24,7 +24,7 @@ The idea: represent a hash function as a plain boolean circuit (AND/OR/XOR/NOT/N
 ## Sample circuits
 
 - `logic-sim/src/shared/64 Bit Adder.txt` — small, loads instantly, good for exercising the UI and the solver end-to-end.
-- `logic-sim/src/shared/sha256.txt` — the actual target: the SHA-256 compression function as a Bristol Fashion circuit (512-bit message block in, 256-bit digest out, ~116,246 gates). Loads and simulates, but is too large to render smoothly or to solve in full with the current solver.
+- `logic-sim/src/shared/sha256.txt` — the actual target: the SHA-256 compression function as a Bristol-format circuit (512-bit input, 256-bit digest out, ~116,246 gates), from the public Bristol circuit collection (see [Generating circuit files](#generating-circuit-files)). Loads and simulates, but is too large to render smoothly or to solve in full with the current solver.
 
 ## Running it
 
@@ -36,15 +36,51 @@ npm run dev
 ```
 Opens on `http://localhost:5173`. Upload a circuit file with the file picker, or use the hardcoded 4-bit adder that loads by default.
 
-**Backend**
+**Backend** — run from the **repository root**, not from inside `PyZ3Server/`. The
+server uses package imports (`from PyZ3Server.clasess import …`), so uvicorn must
+see `PyZ3Server` as a package on the path:
 ```bash
-cd PyZ3Server
 python -m venv .venv
-.venv/Scripts/activate   # or source .venv/bin/activate
+.venv\Scripts\activate          # Windows  (macOS/Linux: source .venv/bin/activate)
 pip install fastapi uvicorn "z3-solver" tqdm pydantic
 uvicorn PyZ3Server.server:app --reload
 ```
 Runs on `http://localhost:8000`. CORS is currently only configured for `http://localhost:5173`.
+
+## Generating circuit files
+
+There are two kinds of circuit file, and neither large one needs to be committed —
+both are reproducible from the instructions below.
+
+**1. Source circuits (`*.txt`, Bristol format)** — the inputs the app parses.
+`sha256.txt` is taken from the public **Bristol circuit collection** (originally the
+University of Bristol; now maintained by N. Smart's group at KU Leuven), which
+distributes SHA-256, SHA-512, AES-128 and other functions in exactly this format:
+
+- <https://homes.esat.kuleuven.be/~nsmart/MPC/> — see the older "Bristol format"
+  list for the `XOR`/`AND`/`INV` circuits this parser reads.
+
+To analyze a new function, download its `.txt` from that collection (or synthesize
+your own to the same layout) and open it with the file picker. The parser expects:
+
+```
+<num_gates> <num_wires>
+<num_input_wires> <num_party2_wires> <num_output_wires>
+<n_in> <n_out> <in_wire...> <out_wire...> <TYPE>   # one line per gate
+```
+
+`<TYPE>` is one of `XOR`, `AND`, `INV`, `OR`, `NAND`, `NOR` (`INV` maps to `NOT`).
+These files are large and third-party, so prefer **downloading** them over committing
+them — keeping only a small in-repo sample like `64 Bit Adder.txt`.
+
+**2. Parsed graph (`logic-graph*.json`)** — the app's own internal representation,
+derived from a `.txt`. It is fully regenerable, so it is intentionally not committed.
+To (re)create it:
+
+1. Start the frontend (`npm run dev`) and open the app.
+2. Load a Bristol-format `.txt` with the file picker.
+3. Click **Download** — the app serializes the parsed graph (`{ inputs, outputs, gates }`)
+   to JSON and saves it.
 
 ## Known limitations
 
