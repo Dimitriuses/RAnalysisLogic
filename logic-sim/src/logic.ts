@@ -3,7 +3,7 @@ import type { LogicGraph, LogicNode } from './classes';
 export function simulateGraph(graph: LogicGraph, inputValues: Record<string, boolean>): Record<string, boolean> {
   const values: Record<string, boolean> = {};
 
-  // Допоміжна функція для рекурсивного обчислення
+  // Helper for recursive evaluation
   function evaluate(id: string): boolean {
     if (id in values) return values[id];
 
@@ -57,7 +57,7 @@ export function simulateGraph(graph: LogicGraph, inputValues: Record<string, boo
     return result;
   }
 
-  // Обчислюємо всі вузли типу OUTPUT
+  // Evaluate every OUTPUT node
   for (const id in graph) {
     if (graph[id].type === 'OUTPUT') {
       evaluate(id);
@@ -68,7 +68,7 @@ export function simulateGraph(graph: LogicGraph, inputValues: Record<string, boo
 }
 
 
-// Основна функція для отримання всіх залежностей від OUTPUT
+// Main function: collect every dependency of an OUTPUT
 export function findDependenciesForOutput(
   graph: Record<string, LogicNode>,
   outputId: string
@@ -76,7 +76,7 @@ export function findDependenciesForOutput(
   //const dependencies = new Set<string>();
   const visited = new Set<string>();
   
-  // Рекурсивна функція для збору залежностей
+  // Recursive helper that collects dependencies
   function collectDependencies(
     nodeId: string,
     // visited: Set<string>
@@ -115,14 +115,14 @@ export function splitIntoModules(graph: LogicGraph, maxInputs = 8, maxOutputs = 
       module[currentId] = node;
       visited.add(currentId);
 
-      // Записуємо inputs
+      // Record inputs
       for (const inputId of node.inputs) {
         if (!visited.has(inputId)) {
           inputs.add(inputId);
         }
       }
 
-      // Додаємо наступні вузли, якщо в модулі не перевищено ліміти
+      // Add downstream nodes while the module stays within its limits
       const children = Object.values(graph).filter(n => n.inputs.includes(currentId));
       for (const child of children) {
         if (

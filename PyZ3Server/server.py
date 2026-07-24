@@ -3,29 +3,29 @@ import os
 from itertools import product
 
 # & "C:\Program Files\Python310\python.exe" -m uvicorn PyZ3Server.server:app --reload
-# sys.path.append(os.path.dirname(__file__))  # Додай поточну папку в шлях
+# sys.path.append(os.path.dirname(__file__))  # add the current folder to the path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Dict, Union
 
-from PyZ3Server.clasess import LogicCircuit, ModuleData
-from PyZ3Server.parcer import convert_to_z3
+from PyZ3Server.classes import LogicCircuit, ModuleData
+from PyZ3Server.parser import convert_to_z3
 from PyZ3Server.solver import solve_all, solve_circuit
 
 app = FastAPI()
 
 origins = [
-    "http://localhost:5173",  # або порт, який ти використовуєш у Vite
+    "http://localhost:5173",  # or whatever port Vite runs on
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,  # Можна поставити ["*"] для всіх джерел (небажано в продакшені)
+    allow_origins=origins,  # can be ["*"] to allow all origins (not recommended in production)
     allow_credentials=True,
-    allow_methods=["*"],  # Дозволити всі методи: GET, POST, OPTIONS, і т.д.
-    allow_headers=["*"],  # Дозволити будь-які заголовки
+    allow_methods=["*"],  # allow all methods: GET, POST, OPTIONS, etc.
+    allow_headers=["*"],  # allow any headers
 )
 
 # print(dir(z3))
@@ -34,9 +34,9 @@ app.add_middleware(
 def simulate_logic(circuit: LogicCircuit):
     # print(circuit)
     try:
-        # TODO: Парсинг у Z3 / SMT тут
+        # TODO: parse into Z3 / SMT here
         return {
-            "message": "Прийнято", 
+            "message": "Accepted",
             "gates_count": len(circuit.gates),
             "data": convert_to_z3(circuit)
         }
@@ -62,12 +62,12 @@ def generate_truth_table(module: ModuleData):
     input_combinations = list(product([False, True], repeat=len(module.inputs)))
 
     for combo in input_combinations:
-        # Призначаємо значення входам
+        # Assign values to the inputs
         node_values = {node.id: None for node in module.nodes}
         for i, input_id in enumerate(module.inputs):
             node_values[input_id] = combo[i]
 
-        # Сімулюємо обчислення значень
+        # Simulate value propagation
         unresolved = module.nodes.copy()
         while unresolved:
             next_round = []
@@ -92,10 +92,10 @@ def generate_truth_table(module: ModuleData):
                 else:
                     node_values[node.id] = False  # fallback
             if len(next_round) == len(unresolved):
-                break  # запобігання infinite loop
+                break  # prevent an infinite loop
             unresolved = next_round
 
-        # Збираємо виходи
+        # Collect the outputs
         output_values = [node_values.get(out_id, None) for out_id in module.outputs]
         table.append({
             "input": combo,

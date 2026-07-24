@@ -37,7 +37,7 @@ npm run dev
 Opens on `http://localhost:5173`. Upload a circuit file with the file picker, or use the hardcoded 4-bit adder that loads by default.
 
 **Backend** — run from the **repository root**, not from inside `PyZ3Server/`. The
-server uses package imports (`from PyZ3Server.clasess import …`), so uvicorn must
+server uses package imports (`from PyZ3Server.classes import …`), so uvicorn must
 see `PyZ3Server` as a package on the path:
 ```bash
 python -m venv .venv

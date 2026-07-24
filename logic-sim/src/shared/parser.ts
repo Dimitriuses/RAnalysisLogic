@@ -1,7 +1,7 @@
 import type { LogicGateType, LogicGraph } from "../classes";
 
 /**
- * Преобразує тип з текстового в LogicGateType
+ * Maps a textual gate type to a LogicGateType.
  */
 function mapGateType(rawType: string): LogicGateType {
   switch (rawType.toUpperCase()) {
@@ -68,14 +68,14 @@ export function parseCircuitFile(content: string): LogicGraph {
 
     const gateId = `gate_${gateIndex++}`;
 
-    // Додаємо вузол гейта
+    // Add the gate node
     graph[gateId] = {
       id: gateId,
       type: gateType,
-      inputs: [] // тимчасово, оновимо пізніше
+      inputs: [] // temporary; filled in later
     };
 
-    // Запам’ятовуємо: цей gateId створює ці дроти
+    // Record that this gateId produces these wires
     for (const wire of outputWires) {
       if (wireProducers[wire]) {
         throw new Error(`Wire ${wire} already has a producer (${wireProducers[wire]})`);
@@ -83,11 +83,11 @@ export function parseCircuitFile(content: string): LogicGraph {
       wireProducers[wire] = gateId;
     }
 
-    // Тимчасово зберігаємо input wires
+    // Temporarily store the input wires
     (graph[gateId] as any).rawInputs = inputWires;
   }
 
-  // === Прив'язуємо входи гейтів ===
+  // === Bind gate inputs ===
   for (const node of Object.values(graph)) {
     const rawInputs: string[] = (node as any).rawInputs || [];
 
@@ -95,7 +95,7 @@ export function parseCircuitFile(content: string): LogicGraph {
       const producer = wireProducers[wire];
       if (producer) return producer;
 
-      // Якщо дріт не має джерела — це зовнішній вхід
+      // A wire with no producer is an external input
       const inputId = `IN_${wire}`;
       if (!graph[inputId]) {
         graph[inputId] = {
@@ -110,7 +110,7 @@ export function parseCircuitFile(content: string): LogicGraph {
     delete (node as any).rawInputs;
   }
 
-  // === Додаємо OUTPUT вузли ===
+  // === Add OUTPUT nodes ===
   for (const wire of outputWireIds) {
     const fromGate = wireProducers[wire];
     if (!fromGate) {

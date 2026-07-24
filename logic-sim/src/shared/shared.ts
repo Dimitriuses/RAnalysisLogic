@@ -36,7 +36,7 @@ export function convertGraphToCircuit(graph: LogicGraph): LogicCircuit {
     inputs,
     outputs,
     gates,
-    // fixed_inputs/fixed_outputs додаються опціонально окремо
+    // fixed_inputs/fixed_outputs are added optionally, separately
   };
 }
 

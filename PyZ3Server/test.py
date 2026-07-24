@@ -4,7 +4,7 @@ a = Bool("a")
 b = Bool("b")
 c = Bool("c")
 
-# Наприклад: c = a AND b
+# For example: c = a AND b
 expr = c == And(a, b)
 
 solver = Solver()

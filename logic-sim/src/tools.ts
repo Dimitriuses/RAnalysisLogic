@@ -20,7 +20,7 @@ export function computeNodeLevels(graph: Record<string, LogicNode>): Record<stri
     }
   }
 
-  // Стартуємо з усіх вузлів, які не мають inputs (входи)
+  // Start from all nodes that have no inputs (the input nodes)
   for (const node of Object.values(graph)) {
     if (node.inputs.length === 0) {
       dfs(node.id, 0);
@@ -43,7 +43,7 @@ export function computeNodeLevelsTopological(graph: Record<string, LogicNode>): 
   const inDegree: Record<string, number> = {};
   const dependents: Record<string, string[]> = {};
 
-  // 1. Підрахунок вхідних ребер (in-degree)
+  // 1. Count incoming edges (in-degree)
   for (const node of Object.values(graph)) {
     inDegree[node.id] = node.inputs.length;
     for (const input of node.inputs) {
@@ -54,22 +54,22 @@ export function computeNodeLevelsTopological(graph: Record<string, LogicNode>): 
     }
   }
 
-  // 2. Черга вузлів без входів (вхідні вузли)
+  // 2. Queue of nodes with no inputs (the input nodes)
   const queue: string[] = Object.keys(graph).filter(id => inDegree[id] === 0);
 
-  // 3. Ітеративна обробка вузлів у порядку "спочатку залежності"
+  // 3. Process nodes iteratively in "dependencies first" order
   while (queue.length > 0) {
     const id = queue.shift()!;
     const node = graph[id];
 
-    // Визначення рівня: max(всі level входів) + 1
+    // Determine the level: max(levels of all inputs) + 1
     if (node.inputs.length === 0) {
       levels[id] = 0;
     } else {
       levels[id] = Math.max(...node.inputs.map(input => levels[input])) + 1;
     }
 
-    // Оновлення залежних вузлів
+    // Update dependent nodes
     for (const dependentId of dependents[id] || []) {
       inDegree[dependentId]--;
       if (inDegree[dependentId] === 0) {
@@ -94,7 +94,7 @@ export function computeNodeLevelsFast(graph: Record<string, LogicNode>): Record<
   const inDegree: Record<string, number> = {};
   const dependents: Record<string, string[]> = {};
 
-  // Крок 1: підготовка in-degree та залежностей
+  // Step 1: prepare in-degree and dependencies
   for (const node of Object.values(graph)) {
     inDegree[node.id] = node.inputs.length;
     for (const input of node.inputs) {
@@ -103,7 +103,7 @@ export function computeNodeLevelsFast(graph: Record<string, LogicNode>): Record<
     }
   }
 
-  // Крок 2: стартові вузли (INPUT)
+  // Step 2: starting nodes (INPUT)
   const queue: string[] = [];
   for (const nodeId in graph) {
     if (inDegree[nodeId] === 0) {
@@ -112,13 +112,13 @@ export function computeNodeLevelsFast(graph: Record<string, LogicNode>): Record<
     }
   }
 
-  // Крок 3: топологічний прохід
+  // Step 3: topological pass
   while (queue.length > 0) {
     const currentId = queue.shift()!;
     const currentLevel = levels[currentId];
 
     for (const dependentId of dependents[currentId] || []) {
-      // Обчислення рівня
+      // Compute the level
       levels[dependentId] = Math.max(levels[dependentId] ?? 0, currentLevel + 1);
       inDegree[dependentId]--;
 
@@ -128,7 +128,7 @@ export function computeNodeLevelsFast(graph: Record<string, LogicNode>): Record<
     }
   }
 
-  // Крок 4: Примусово зробити OUTPUT останнім рівнем
+  // Step 4: force OUTPUT nodes onto the last level
   const maxLevel = Math.max(...Object.values(levels));
   for (const node of Object.values(graph)) {
     if (node.type === "OUTPUT") {
@@ -139,7 +139,7 @@ export function computeNodeLevelsFast(graph: Record<string, LogicNode>): Record<
   return levels;
 }
 
-export function tarjan(graph: LogicGraph): LogicNode[][] { // якщо має цикли
+export function tarjan(graph: LogicGraph): LogicNode[][] { // handles cycles
   const indexMap = new Map<string, number>();
   const lowlinkMap = new Map<string, number>();
   const stack: string[] = [];
@@ -258,20 +258,20 @@ export function groupByModules(graph: LogicGraph, levels: Record<string, number>
 
     const nodeIds = new Set(nodes.map(n => n.id));
 
-    // 1) Вхідні вузли: всі предки модульних вузлів, що НЕ в самому модулі
+    // 1) Inputs: all predecessors of the module's nodes that are NOT in the module itself
     const inputs = new Set<string>(
       nodes
-        .flatMap(n => n.inputs)              // усі входи кожного вузла
-        .filter(i => !nodeIds.has(i))        // залишаємо лише ті, яких немає в модулі
+        .flatMap(n => n.inputs)              // all inputs of each node
+        .filter(i => !nodeIds.has(i))        // keep only those not in the module
     );
 
-    // 2) Вихідні вузли: всі зовнішні вузли, що приймають на вхід хоча б один модульний вузол
-    //    але ми хочемо саме імена модульних вузлів, які йдуть в зовнішні (щоб знати їх як outputs інтерфейс)
+    // 2) Outputs: all external nodes that take at least one module node as input,
+    //    but we want the names of the module nodes feeding them (the module's output interface)
     const outputs = new Set<string>(
       Object.values(graph)
-        .filter(v => !nodeIds.has(v.id))       // тільки зовнішні вузли
-        .flatMap(v => v.inputs                 // подивитися їхні входи
-          .filter(i => nodeIds.has(i))         // вибрати ті входи, що з модуля
+        .filter(v => !nodeIds.has(v.id))       // external nodes only
+        .flatMap(v => v.inputs                 // look at their inputs
+          .filter(i => nodeIds.has(i))         // pick the inputs that come from the module
         )
     );
     
@@ -300,6 +300,6 @@ export function groupByModules(graph: LogicGraph, levels: Record<string, number>
   }
 
   const io = countUniqueIO(currentGroup, graph)
-  pushGroup(io.inputs, io.outputs); // остання група
+  pushGroup(io.inputs, io.outputs); // final group
   return modules;
 }

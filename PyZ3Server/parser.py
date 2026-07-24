@@ -1,21 +1,21 @@
 from typing import Dict, Optional
 from z3 import Xor, Bool, And, Or, Not, Solver, BoolRef
 
-from PyZ3Server.clasess import LogicCircuit
+from PyZ3Server.classes import LogicCircuit
 
 def convert_to_z3(
     circuit: LogicCircuit,
     
 ):
-    # Створюємо усі змінні
+    # Create all variables
     variables: Dict[str, BoolRef] = {}
 
-    # Спочатку вхідні
+    # Inputs first
     for name in circuit.inputs:
         variables[name] = Bool(name)
         # print(name)
 
-    # Потім проміжні та вихідні
+    # Then intermediate and output wires
     for gate in circuit.gates:
         for name in gate.inputs + [gate.id]:
             # print(name)
@@ -47,19 +47,19 @@ def convert_to_z3(
         elif gate.type == "NOT":
             constraints.append(out == Not(a))
         elif gate.type == "OUTPUT":
-            constraints.append(out == a)  # або просто out == a
+            constraints.append(out == a)  # simply out == a
         else:
-            raise ValueError(f"Невідомий тип: {gate.type}")
+            raise ValueError(f"Unknown gate type: {gate.type}")
         
     # print("Fixed inputs raw:", circuit.fixed_inputs, type(circuit.fixed_inputs))
-    # Додаємо фіксовані значення входів
+    # Add fixed input values
     if isinstance(circuit.fixed_inputs, dict) and any(circuit.fixed_inputs):
         # print("inputs")
         for name, value in circuit.fixed_inputs.items():
             if name in variables:
                 constraints.append(variables[name] == value)
 
-    # Додаємо фіксовані значення виходів
+    # Add fixed output values
     if isinstance(circuit.fixed_outputs, dict) and circuit.fixed_outputs:
         # print("outputs")
         for name, value in circuit.fixed_outputs.items():

@@ -8,7 +8,7 @@ import type { LogicNode, LogicGraph } from './classes.ts';
 import { findDependenciesForOutput, generateInputs, getInputs, getOutputs, settupInputs, simulateGraph, splitIntoModules } from './logic.ts';
 import { graph4bitAdder, inputValues4bitAdder } from './graphs.ts';
 import { computeNodeLevels, computeNodeLevelsFast, computeNodeLevelsTopological, groupByModules, groupNodesByLevel, tarjan } from './tools.ts';
-import { parseCircuitFile } from './shared/parcer.ts';
+import { parseCircuitFile } from './shared/parser.ts';
 import { convertGraphToCircuit, sendToSolver } from './shared/shared.ts';
 
 
@@ -44,7 +44,7 @@ function updateColors(values: Record<string, boolean>, nodeList: DataSet<Node>, 
     const fromVal = values[id];
     return {
       id: edge.id,
-      color: { color: relevantInputs?.has(idt)? '#0300ccff' : (fromVal ? '#00cc00' : '#cc0000') }, // Зелений = 1, Червоний = 0
+      color: { color: relevantInputs?.has(idt)? '#0300ccff' : (fromVal ? '#00cc00' : '#cc0000') }, // green = 1, red = 0
       arrows: 'to'
     };
   });
@@ -170,13 +170,13 @@ document.getElementById('fileInput')!.addEventListener('change', async (e) => {
   // console.log(splitIntoModules(graph));
 
   const components = groupByModules(graph, levels);
-  console.log("Модулів знайдено:", components.length);
+  console.log("Modules found:", components.length);
   console.log(components)
 
   // inputIds = Object.values(graph).filter(n => n.type === 'INPUT').map(n => n.id).sort();
   // outputIds = Object.values(graph).filter(n => n.type === 'OUTPUT').map(n => n.id).sort();
 
-  // ініціалізуємо всі input як false
+  // initialize all inputs to false
   inputValues = generateInputs(graph)
 
   updateBitInputDisplay(inputValues);
@@ -266,7 +266,7 @@ function populateDropdown(solutions: Record<string, boolean>[]) {
   solutions.forEach((solution, index) => {
     const option = document.createElement("option");
     option.value = index.toString();
-    option.textContent = `Варіант ${index + 1} \t${Object.keys(solution).filter(k => graph[k].type == "INPUT").map(k => solution[k]? "1" : "0").join("")}`;
+    option.textContent = `Option ${index + 1} \t${Object.keys(solution).filter(k => graph[k].type == "INPUT").map(k => solution[k]? "1" : "0").join("")}`;
     selector.appendChild(option);
   });
 
@@ -275,7 +275,7 @@ function populateDropdown(solutions: Record<string, boolean>[]) {
     displaySolution(solutions[selectedIndex]);
   });
 
-  // Відразу показати перший варіант
+  // Immediately show the first option
   if (solutions.length > 0) {
     displaySolution(solutions[0]);
   }
@@ -296,7 +296,7 @@ function displaySolution(solution: Record<string, boolean>) {
 
 
 // fileInput.addEventListener('click', () => {
-//   console.log('Клік по input відбувся!');
+//   console.log('input click fired!');
 // });
 
 

@@ -43,23 +43,23 @@ def get_all_models(solver, variables):
     #     model = solver.model()
     #     models.append(model)
     #     print("\rmodeling ", len(models), end="",)
-    #     # Створюємо обмеження, що виключає поточну модель
+    #     # Build a constraint that excludes the current model
     #     block = []
     #     for var in variables:
     #         val = model.eval(variables[var], model_completion=True)
     #         block.append(variables[var] != val)
-    #     solver.add(Or(block))  # виключаємо поточну комбінацію
+    #     solver.add(Or(block))  # exclude the current combination
     for i in tqdm(range(1000)):
         if solver.check() != sat: break
         model = solver.model()
         models.append(model)
         # print("\rmodeling ", len(models), end="",)
-        # Створюємо обмеження, що виключає поточну модель
+        # Build a constraint that excludes the current model
         block = []
         for var in variables:
             val = model.eval(variables[var], model_completion=True)
             block.append(variables[var] != val)
-        solver.add(Or(block))  # виключаємо поточну комбінацію
+        solver.add(Or(block))  # exclude the current combination
     end = time.perf_counter()
     # print(f" {end - start:.6f}s")
     return models

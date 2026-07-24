@@ -1,4 +1,4 @@
-# Модель очікуваного входу
+# Model of the expected request payload
 from typing import Dict, List, Optional
 from pydantic import BaseModel
 
@@ -13,7 +13,7 @@ class LogicCircuit(BaseModel):
     inputs: List[str]
     outputs: List[str]
     gates: List[LogicGate]
-    fixed_inputs: Optional[Dict[str, bool]] = None,
+    fixed_inputs: Optional[Dict[str, bool]] = None
     fixed_outputs: Optional[Dict[str, bool]] = None
 
 class ModuleData(BaseModel):
