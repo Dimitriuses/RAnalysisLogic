@@ -21,44 +21,43 @@ export function parseCircuitFile(content: string): LogicGraph {
   const graph: LogicGraph = {};
   const wireProducers: Record<string, string> = {}; // wire → producer gate ID
 
-  const [_, totalWiresStr] = lines[0].split(' ');
-  const totalWires = parseInt(totalWiresStr);
+  // Line 0: "<num_gates> <num_wires>"
+  const totalWires = parseInt(lines[0].split(/\s+/)[1], 10);
 
-  const inputConfig = lines[1].split(' ').map(Number);
-  const outputConfig = lines[2].split(' ').map(Number);
+  // A gate line ends with a type token (e.g. XOR); a header line is all numbers.
+  // Bristol Fashion has two header lines (input sizes, then output sizes); the
+  // older Bristol format used by sha256.txt has only one
+  // ("<input-wires> <party-2-wires> <output-wires>"). Detect where the gates
+  // actually start rather than assuming a fixed offset.
+  const isGateLine = (line: string) => Number.isNaN(Number(line.split(/\s+/).pop()));
 
-  // === INPUT wires ===
-  // const inputWireIds: string[] = [];
-  // let offset = 0;
-  // for (let i = 1; i < inputConfig.length; i++) {
-  //   const count = inputConfig[i];
-  //   for (let j = 0; j < count; j++) {
-  //     inputWireIds.push((offset + j).toString());
-  //   }
-  //   offset += count;
-  // }
+  let firstGateIndex = 1;
+  while (firstGateIndex < lines.length && !isGateLine(lines[firstGateIndex])) {
+    firstGateIndex++;
+  }
+  const headerLines = lines
+    .slice(1, firstGateIndex)
+    .map(l => l.split(/\s+/).map(Number));
 
-  
-  // const outputCount = outputConfig[1];
-  // const outputWireStart = totalWires - outputCount;
-  // const outputWireIds = new Set(
-    //   Array.from({ length: outputCount }, (_, i) => (outputWireStart + i).toString())
-    // );
-    
-    const inputCount = inputConfig[0]; // 512
-    const outputCount = inputConfig[2]; // 256
-  
-    const inputWireIds = Array.from({ length: inputCount }, (_, i) => i.toString());
-    const outputWireStart = totalWires - outputCount;
-    const outputWireIds = new Set(
-      Array.from({ length: outputCount }, (_, i) => (outputWireStart + i).toString())
-    );
-    
+  // Number of output wires:
+  //  - Bristol Fashion (2 header lines): last line is "<nov> <size...>" → sum of the sizes.
+  //  - Old Bristol (1 header line): "<niw1> <niw2> <now>" → the last value.
+  const outputCount =
+    headerLines.length >= 2
+      ? headerLines[headerLines.length - 1].slice(1).reduce((a, b) => a + b, 0)
+      : headerLines[0][headerLines[0].length - 1];
+
+  // Output wires are always the highest-numbered wires in the circuit.
+  const outputWireStart = totalWires - outputCount;
+  const outputWireIds = new Set(
+    Array.from({ length: outputCount }, (_, i) => (outputWireStart + i).toString())
+  );
+
   // === GATES ===
   let gateIndex = 0;
 
-  for (let i = 3; i < lines.length; i++) {
-    const parts = lines[i].split(' ');
+  for (let i = firstGateIndex; i < lines.length; i++) {
+    const parts = lines[i].split(/\s+/);
     const numInputs = parseInt(parts[0]);
     const numOutputs = parseInt(parts[1]);
 
@@ -127,4 +126,3 @@ export function parseCircuitFile(content: string): LogicGraph {
 
   return graph;
 }
-
