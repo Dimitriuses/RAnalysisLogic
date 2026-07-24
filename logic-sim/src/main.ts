@@ -182,14 +182,24 @@ document.getElementById('fileInput')!.addEventListener('change', async (e) => {
   drawGraph(graph, inputValues);
 });
 
+// Wire IDs are named "IN_<wire>" / "OUT_<wire>"; ascending wire number is the
+// circuit's own MSB-first bit order (see parser.ts / settupInputs), so sort on
+// it to keep the displayed bit string consistent with what "Set Inputs" accepts.
+function sortByWireNumber(entries: [string, boolean][]): [string, boolean][] {
+  return entries.sort(([a], [b]) => {
+    const na = parseInt(a.split('_').pop()!, 10);
+    const nb = parseInt(b.split('_').pop()!, 10);
+    return na - nb;
+  });
+}
+
 function updateBitInputDisplay(inputs: Record<string, boolean>) {
-  const bitStr = Object.values(inputs).map(value => { return value ? '1' : '0' }).join('');
+  const bitStr = sortByWireNumber(Object.entries(inputs)).map(([, value]) => value ? '1' : '0').join('');
   (document.getElementById('bitInput') as HTMLInputElement).value = bitStr;
 }
 
 function updateBitOutputDisplay(outputs: Record<string, boolean>) {
-  const bitStr = Object.values(outputs).map(value => { return value ? '1' : '0' }).join('');
-  // console.log(bitStr);
+  const bitStr = sortByWireNumber(Object.entries(outputs)).map(([, value]) => value ? '1' : '0').join('');
   (document.getElementById('bitOutput') as HTMLInputElement).value = bitStr;
 }
 
