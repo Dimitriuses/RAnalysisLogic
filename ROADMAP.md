@@ -19,9 +19,6 @@ Priorities: **High** = portfolio impact, **Medium** = quality & credibility,
   **Solve / Truth-table** buttons need the local FastAPI backend
   (`localhost:8000`) — either guard them to show a "requires local backend" note
   when it's unreachable, or say so clearly in the UI/README.
-- [ ] **Add `PyZ3Server/requirements.txt`** (`fastapi`, `uvicorn`, `z3-solver`,
-  `tqdm`, `pydantic`). The README currently inlines the pip list; a requirements
-  file is the conventional, copy-pasteable form.
 - [ ] **Add a LICENSE** (MIT, to match `brickwork-ssg`).
 
 ## Medium priority — quality & credibility
@@ -68,3 +65,10 @@ future work:
 - Fixed a Pydantic default bug in `classes.py` (`= None,` tuple → `= None`).
 - Fixed the parser to auto-detect the header layout, so it no longer drops the
   first gate of old-Bristol-format circuits like `sha256.txt`.
+- Added `PyZ3Server/requirements.txt` (pinned to the versions verified against
+  the current code) and pointed the README's backend setup at it instead of an
+  inlined pip list.
+- Sorted the "Input bits" / "Output bits" display by wire number to match the
+  circuit's own MSB-first ordering (they previously showed raw object-insertion
+  order, which didn't line up with what `settupInputs` accepted or with a
+  coherent numeric value).

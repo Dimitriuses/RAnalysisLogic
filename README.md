@@ -42,7 +42,7 @@ see `PyZ3Server` as a package on the path:
 ```bash
 python -m venv .venv
 .venv\Scripts\activate          # Windows  (macOS/Linux: source .venv/bin/activate)
-pip install fastapi uvicorn "z3-solver" tqdm pydantic
+pip install -r PyZ3Server/requirements.txt
 uvicorn PyZ3Server.server:app --reload
 ```
 Runs on `http://localhost:8000`. CORS is currently only configured for `http://localhost:5173`.
