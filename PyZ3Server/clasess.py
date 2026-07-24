@@ -15,3 +15,9 @@ class LogicCircuit(BaseModel):
     gates: List[LogicGate]
     fixed_inputs: Optional[Dict[str, bool]] = None,
     fixed_outputs: Optional[Dict[str, bool]] = None
+
+class ModuleData(BaseModel):
+    id: str
+    nodes: List[LogicGate]
+    inputs: List[str]
+    outputs: List[str]

@@ -1,5 +1,6 @@
 import sys
 import os
+from itertools import product
 
 # & "C:\Program Files\Python310\python.exe" -m uvicorn PyZ3Server.server:app --reload
 # sys.path.append(os.path.dirname(__file__))  # Додай поточну папку в шлях
@@ -9,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Dict, Union
 
-from PyZ3Server.clasess import LogicCircuit
+from PyZ3Server.clasess import LogicCircuit, ModuleData
 from PyZ3Server.parcer import convert_to_z3
 from PyZ3Server.solver import solve_all, solve_circuit
 
@@ -52,4 +53,59 @@ def solve_logic_circuit(circuit: LogicCircuit):
         return {"status": "unsat", "solution": None}
     else:
         return {"status": "sat", "solution": result}
+    
+
+@app.post("/truth-table")
+def generate_truth_table(module: ModuleData):
+    table = []
+
+    input_combinations = list(product([False, True], repeat=len(module.inputs)))
+
+    for combo in input_combinations:
+        # Призначаємо значення входам
+        node_values = {node.id: None for node in module.nodes}
+        for i, input_id in enumerate(module.inputs):
+            node_values[input_id] = combo[i]
+
+        # Сімулюємо обчислення значень
+        unresolved = module.nodes.copy()
+        while unresolved:
+            next_round = []
+            for node in unresolved:
+                input_vals = [node_values.get(inp) for inp in node.inputs]
+                if None in input_vals:
+                    next_round.append(node)
+                    continue
+
+                if node.type == "AND":
+                    node_values[node.id] = all(input_vals)
+                elif node.type == "OR":
+                    node_values[node.id] = any(input_vals)
+                elif node.type == "NOT":
+                    node_values[node.id] = not input_vals[0]
+                elif node.type == "XOR":
+                    node_values[node.id] = sum(input_vals) % 2 == 1
+                elif node.type == "NAND":
+                    node_values[node.id] = not all(input_vals)
+                elif node.type == "NOR":
+                    node_values[node.id] = not any(input_vals)
+                else:
+                    node_values[node.id] = False  # fallback
+            if len(next_round) == len(unresolved):
+                break  # запобігання infinite loop
+            unresolved = next_round
+
+        # Збираємо виходи
+        output_values = [node_values.get(out_id, None) for out_id in module.outputs]
+        table.append({
+            "input": combo,
+            "output": output_values
+        })
+
+    return {
+        "moduleId": module.id,
+        "inputs": module.inputs,
+        "outputs": module.outputs,
+        "table": table
+    }
 
