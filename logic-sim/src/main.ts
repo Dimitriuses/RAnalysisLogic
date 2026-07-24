@@ -5,16 +5,15 @@ import './style.css'
 import { Network, type Node, type Edge, type Options } from 'vis-network';
 import { DataSet } from 'vis-data';
 import type { LogicNode, LogicGraph } from './classes.ts';
-import { findDependenciesForOutput, generateInputs, getInputs, getOutputs, settupInputs, simulateGraph, splitIntoModules } from './logic.ts';
-import { graph4bitAdder, inputValues4bitAdder } from './graphs.ts';
-import { computeNodeLevels, computeNodeLevelsFast, computeNodeLevelsTopological, groupByModules, groupNodesByLevel, tarjan } from './tools.ts';
+import { findDependenciesForOutput, generateInputs, getInputs, getOutputs, settupInputs, simulateGraph } from './logic.ts';
+import { graph4bitAdder } from './graphs.ts';
+import { computeNodeLevelsFast, groupByModules } from './tools.ts';
 import { parseCircuitFile } from './shared/parser.ts';
 import { convertGraphToCircuit, sendToSolver } from './shared/shared.ts';
 
 
 const fileInput = document.getElementById('fileInput') as HTMLInputElement;
 let inputIds: string[] = [];
-let outputIds: string[] = [];
 
 let graph: LogicGraph;
 let inputValues: Record<string, boolean> = {};
@@ -138,7 +137,7 @@ graph = graph4bitAdder
 
 drawGraph(graph, inputValues);
 
-fileInput.addEventListener('change', (event) => {
+fileInput.addEventListener('change', () => {
   const file = fileInput.files?.[0];
   if (!file) return;
 
