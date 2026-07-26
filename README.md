@@ -26,6 +26,15 @@ The idea: represent a hash function as a plain boolean circuit (AND/OR/XOR/NOT/N
 - `logic-sim/src/shared/64 Bit Adder.txt` — small, loads instantly, good for exercising the UI and the solver end-to-end.
 - `logic-sim/src/shared/sha256.txt` — the actual target: the SHA-256 compression function as a Bristol-format circuit (512-bit input, 256-bit digest out, ~116,246 gates), from the public Bristol circuit collection (see [Generating circuit files](#generating-circuit-files)). Loads and simulates, but is too large to render smoothly or to solve in full with the current solver.
 
+## Live demo
+
+[dimitriuses.github.io/RAnalysisLogic](https://dimitriuses.github.io/RAnalysisLogic/) —
+the visualizer/simulator, loaded with the 64-bit adder, deployed via GitHub Pages
+(see `.github/workflows/deploy-pages.yml`). It's a static build of `logic-sim`
+only: **Solve** / **Solve (fix outputs)** call the PyZ3Server backend, which
+isn't running there, so clicking them shows a disclaimer instead of a result.
+Run the backend locally (below) to try the real Z3-based solver.
+
 ## Running it
 
 **Frontend**

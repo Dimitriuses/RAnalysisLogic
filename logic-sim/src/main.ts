@@ -246,7 +246,7 @@ document.getElementById('solveBtn')!.addEventListener('click', () => {
   // console.log("ok")
   sendToSolver(circuit).then(data => {
     console.log(data)
-  })
+  }).catch(showSolverUnavailableNotice)
 
 })
 
@@ -264,9 +264,21 @@ document.getElementById('solveOutputsBtn')!.addEventListener('click', () => {
   sendToSolver(circuit).then(data => {
     console.log(data);
     populateDropdown(data.solution)
-  })
+  }).catch(showSolverUnavailableNotice)
 
 })
+
+// The Solve buttons call PyZ3Server (a local Python/Z3 process) — on a static
+// deploy (e.g. GitHub Pages) there's nothing listening, so the fetch rejects.
+// Surface that plainly instead of letting it fail silently in the console.
+function showSolverUnavailableNotice(err: unknown) {
+  console.error(err);
+  alert(
+    "Solving requires the PyZ3Server backend (FastAPI + Z3), which isn't running here — " +
+    "this is a static demo of the visualizer/simulator only.\n\n" +
+    "Clone the repo and run PyZ3Server locally (see the README) to try the real solver."
+  );
+}
 
 function populateDropdown(solutions: Record<string, boolean>[]) {
   const selector = document.getElementById("solutionSelector") as HTMLSelectElement;

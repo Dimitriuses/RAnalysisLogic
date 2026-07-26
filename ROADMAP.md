@@ -13,12 +13,6 @@ Priorities: **High** = portfolio impact, **Medium** = quality & credibility,
   yet — the biggest gap. Capture the circuit graph with colored wires, flipping an
   `INPUT` bit and watching values propagate, and the `OUTPUT`-dependency
   highlighting. A short GIF of the 64-bit adder is enough.
-- [ ] **Live demo via GitHub Pages.** Visualization, simulation, and
-  dependency-highlighting are all client-side and the app loads the hardcoded
-  4-bit adder by default, so a Pages build is instantly usable. Caveat: the
-  **Solve / Truth-table** buttons need the local FastAPI backend
-  (`localhost:8000`) — either guard them to show a "requires local backend" note
-  when it's unreachable, or say so clearly in the UI/README.
 - [ ] **Add a LICENSE** (MIT, to match `brickwork-ssg`).
 
 ## Medium priority — quality & credibility
@@ -72,3 +66,11 @@ future work:
   circuit's own MSB-first ordering (they previously showed raw object-insertion
   order, which didn't line up with what `settupInputs` accepted or with a
   coherent numeric value).
+- Shipped the GitHub Pages live demo: `.github/workflows/deploy-pages.yml`
+  builds `logic-sim` (with `--base=/RAnalysisLogic/`) and deploys it on push to
+  `main`. Solve buttons now `.catch()` the fetch and show a plain-language
+  disclaimer (no backend on a static deploy) instead of failing silently —
+  considered and rejected a closed-form client-side solver and a
+  precomputed-example cache for this, since both would be exploiting that an
+  adder is trivially invertible rather than actually demonstrating the
+  Z3-backed solver the rest of the project is about.
