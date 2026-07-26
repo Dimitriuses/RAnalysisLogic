@@ -143,12 +143,20 @@ export function buildModuleOverview(graph: LogicGraph, levels: Record<string, nu
   modules.forEach((m, i) => {
     const id = moduleId(i);
     // Dedupe: multiple wires from the same producing module must collapse to
-    // a single edge, or the "${input}->${id}" edge id collides.
-    const resolvedInputs = [...new Set([...m.inputs].map(wire => producerModule[wire] ?? wire))];
+    // a single edge, or the "${input}->${id}" edge id collides. Keep track of
+    // which raw wire(s) each resolved id actually stands for, so an edge can
+    // later be colored by those specific wires rather than a whole module's
+    // aggregate summary.
+    const inputWireMap: Record<string, string[]> = {};
+    for (const wire of m.inputs) {
+      const resolved = producerModule[wire] ?? wire;
+      (inputWireMap[resolved] ??= []).push(wire);
+    }
     overview[id] = {
       id,
       type: 'MODULE',
-      inputs: resolvedInputs,
+      inputs: Object.keys(inputWireMap),
+      inputWireMap,
       internalNodeIds: m.nodes.map(n => n.id),
       rawInputWires: [...m.inputs],
       exportedWireIds: [...m.outputs],
@@ -157,8 +165,9 @@ export function buildModuleOverview(graph: LogicGraph, levels: Record<string, nu
 
   for (const node of Object.values(graph)) {
     if (node.type === 'OUTPUT') {
-      const producer = producerModule[node.inputs[0]] ?? node.inputs[0];
-      overview[node.id] = { id: node.id, type: 'OUTPUT', inputs: [producer] };
+      const wire = node.inputs[0];
+      const producer = producerModule[wire] ?? wire;
+      overview[node.id] = { id: node.id, type: 'OUTPUT', inputs: [producer], inputWireMap: { [producer]: [wire] } };
     }
   }
 

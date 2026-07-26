@@ -327,3 +327,89 @@ future work:
     covered by the preview's existing value-based coloring (confirmed
     again with a mixed true/false scenario, not just all-same); no change
     needed there.
+- Fixed two more real bugs in the INPUT→OUTPUT propagation direction, reported
+  as "the module lights up grayish/light-blue and nothing turns green, and the
+  preview panel doesn't highlight anything inside" — the OUTPUT→INPUT
+  dependency-highlight direction was unaffected by either, which is why it
+  "worked perfectly" while this direction didn't:
+  - **Stale-closure bug**: the click handler's OUTPUT and MODULE branches read
+    a `result` variable computed once at `drawGraph`'s initial render and never
+    updated after an `INPUT` toggle. The module preview panel therefore always
+    showed the initial (all-zero) simulation regardless of any inputs already
+    toggled, and the OUTPUT branch's value coloring (not its structural blue
+    dependency highlight, which doesn't depend on `result`) was silently stale
+    too. Fixed by computing one fresh `currentResult = simulateGraph(...)`
+    right after any input toggle and using it consistently across all three
+    branches.
+  - **Toolbar/canvas click-swallowing bug**: `#app` was `position: absolute;
+    top: 0`, the same region real document-flow toolbar controls occupy — they
+    only render on top visually (`z-index: 10`); the canvas underneath still
+    received clicks anywhere a control didn't cover, silently eating clicks on
+    the module overview's topmost node row (confirmed via a screenshot showing
+    a stray focus ring land on "Set Outputs" instead of the intended node).
+    Fixed by moving `#app` below the toolbar's actual measured height
+    (`top: 132px`).
+  - Verified both fixes with real Playwright mouse clicks (not just direct
+    `DataSet` mutation) against the 64-bit adder: toggling a single input now
+    correctly leaves a module neutral when its exported wires genuinely
+    disagree (5 of 6 wires false, 1 true) and correctly turns a module green
+    end-to-end (background, outgoing edges, and the open preview panel's
+    internal gates/edges) once all 128 inputs are set and one module's wires
+    all agree.
+  - A third bug survived that first pass and only showed up once someone
+    actually used it: outgoing edges from a module kept showing gray even
+    when the preview panel showed a clear, unambiguous path inside it. Root
+    cause — `buildModuleOverview` resolves a downstream node's input wires
+    down to producer-module ids for the overview graph's edges (e.g. the
+    specific wire `gate_29` becomes edge `module_1 -> OUT_436`), but that
+    resolution discarded *which* of the module's exported wires the edge
+    actually carried. Coloring then fell back to summarizing the *entire*
+    module's exported wires — correct for the module's own box (a genuine
+    whole-module concept) but wrong for one specific edge, which one bit
+    toggle will rarely make agree even when the single wire that edge
+    actually represents is perfectly unambiguous. Fixed by threading an
+    `inputWireMap` through `OverviewNode` (`classes.ts`/`tools.ts`) recording
+    which raw wire(s) collapsed onto each resolved edge, carried as
+    `sourceWireIds` on the rendered `Edge` objects, and used to summarize
+    just those specific wires instead of the module's whole export set.
+    Verified exhaustively (not spot-checked): reproduced the app's own
+    summarize logic independently in a Playwright script and compared it
+    against all 85 module-sourced edges' actual rendered colors for both a
+    single-bit toggle (0 mismatches; edges now show 83 red/1 gray/1 green
+    instead of 85 gray) and all-128-inputs-true (0 mismatches; 85/85 again) —
+    an edge whose specific wires still disagree (e.g. one carrying 3 wires
+    where only 1 of 3 differs) correctly stays gray, distinguishing this from
+    simply always showing a color.
+  - Narrowing an edge's summary to just its own carried wires (previous bullet)
+    still left many module-to-module edges gray in practice, because a single
+    resolved edge routinely bundles 2-3 *unrelated* wires (module boundaries
+    don't align with single-wire granularity — `groupByModules` groups by
+    level/IO-count, not by bit position), and any two of them disagreeing is
+    common the moment more than one input is active — reported as "the vast
+    majority of paths that pass through several modules" showing gray.
+    Investigating the specific repro cases given (`IN_30`/`IN_91` through
+    modules 10↔11, `IN_60` through modules 0↔1, `IN_0` through modules 0↔20)
+    confirmed the coloring itself was already correct for whatever wires an
+    edge actually carried in every case — including one that looked like a
+    fresh contradiction (`IN_91` alone renders red, not gray, but replaying it
+    *after* `IN_30` without resetting reproduced the reported gray exactly),
+    i.e. the "bug" was real but was the bundling itself, not the summarizing
+    logic. Given a straight choice between keeping one bundled edge per module
+    pair (with e.g. a hover tooltip explaining a gray result) or rendering one
+    edge per underlying wire, went with the latter: every module-to-module and
+    module-to-OUTPUT edge is now split into one edge per wire in
+    `inputWireMap`, so an edge is only ever ambiguous about its own single
+    value, never about an arbitrary bundle. Multiple edges between the same
+    node pair are curved apart (alternating `curvedCW`/`curvedCCW`,
+    increasing roundness) — left at the previous `smooth: false` they'd have
+    drawn as one indistinguishable straight line, silently hiding all but
+    whichever one happened to paint last. Also incidentally eliminates the
+    origin of the earlier duplicate-edge-id crash at the root: edge ids are
+    now derived from the (always-unique) wire id rather than the
+    (potentially repeated) resolved module id. Verified exhaustively again
+    post-split: 115/115 module-sourced edges match their single wire's actual
+    value with zero mismatches for both scenarios, and the single-bit-toggle
+    case now shows zero gray edges at all (113 red/2 green) instead of mostly
+    gray; the specific `module_10 -> module_11` case now renders as two
+    distinct edges (`gate_161`, red; `gate_162`, green) instead of one
+    ambiguous gray line.

@@ -42,16 +42,17 @@ h1 {
 }
 
 #app {
-  /* max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center; */
   position: absolute;
-  top: 0;
+  /* Below the toolbar, not underneath it — #app is absolutely positioned, so
+     top:0 would place the canvas overlapping the same region as the toolbar
+     (which sits above it only visually, via z-index; the canvas underneath
+     still receives clicks anywhere a control doesn't cover). That silently
+     ate clicks on the topmost row of nodes in the module overview, since
+     several inputs render directly behind the "Set Outputs"/"Solve" buttons. */
+  top: 132px;
   left: 0;
   right: 0;
   bottom: 0;
-  /* z-index: -1; */
 }
 
 .logo {

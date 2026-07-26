@@ -52,12 +52,10 @@ function filterToRendered(values: Record<string, boolean>): Record<string, boole
   return Object.fromEntries(Object.entries(values).filter(([id]) => renderedIds!.has(id)));
 }
 
-// A module has no single boolean value of its own — summarize it from its
-// exported wires so the "lit path" doesn't just go dark at module boundaries.
-// true/false only when every exported wire agrees; null (mixed, or unknown
-// because we weren't given a full simulation result) falls back to neutral.
-function summarizeModule(moduleId: string, fullResult?: Record<string, boolean>): boolean | null {
-  const wires = moduleExportedWires?.[moduleId];
+// true/false only when every one of the given wires agrees; null (mixed, or
+// unknown because we weren't given a full simulation result) falls back to
+// neutral.
+function summarizeWires(wires: string[] | undefined, fullResult?: Record<string, boolean>): boolean | null {
   if (!wires || !fullResult) return null;
   const vals = wires.map(w => fullResult[w]).filter((v): v is boolean => v !== undefined);
   if (vals.length === 0) return null;
@@ -65,6 +63,21 @@ function summarizeModule(moduleId: string, fullResult?: Record<string, boolean>)
   if (vals.every(v => !v)) return false;
   return null;
 }
+
+// A module has no single boolean value of its own — summarize it from all its
+// exported wires so the "lit path" doesn't just go dark at module boundaries.
+// Used for the module's own box color; a specific outgoing edge uses just the
+// wire(s) it actually carries instead (see OverviewEdge.sourceWireIds below),
+// since a module's exported wires can legitimately disagree with each other
+// while the single wire behind one particular edge is still unambiguous.
+function summarizeModule(moduleId: string, fullResult?: Record<string, boolean>): boolean | null {
+  return summarizeWires(moduleExportedWires?.[moduleId], fullResult);
+}
+
+// vis-network's own Edge type has no room for which raw wire(s) a resolved
+// module-overview edge stands for (see buildModuleOverview's inputWireMap) —
+// carried as an extra field on the same object instead of a parallel map.
+type OverviewEdge = Edge & { sourceWireIds?: string[] };
 
 function updateColors(
   values: Record<string, boolean>,
@@ -94,7 +107,8 @@ function updateColors(
     const id = edge.from as string
     const idt = edge.to as string
     const isRelevant = relevantInputs?.has(idt) ?? false;
-    const fromVal = id in values ? values[id] : summarizeModule(id, fullResult);
+    const sourceWireIds = (edge as OverviewEdge).sourceWireIds;
+    const fromVal = id in values ? values[id] : (sourceWireIds ? summarizeWires(sourceWireIds, fullResult) : summarizeModule(id, fullResult));
     const color = isRelevant
       ? '#0300ccff'
       : (fromVal === null || fromVal === undefined ? '#9aa0a6' : (fromVal ? '#00cc00' : '#cc0000')); // green = 1, red = 0
@@ -148,14 +162,40 @@ function drawGraph(graph: LogicGraph, inputValues: Record<string, boolean>) {
     level: renderLevels[n.id]
   }));
 
-  const edgesArray: Edge[] = Object.values(renderGraph).flatMap(n =>
-    n.inputs.map(input => ({
-      id: `${input}->${n.id}`,
-      from: input,
-      to: n.id,
-      smooth: false
-    }))
+  // One rendered edge per underlying wire, not one per module pair: several
+  // raw wires often collapse onto the same resolved module-to-module
+  // connection (see buildModuleOverview's inputWireMap), and summarizing all
+  // of them into a single line meant that line showed gray (mixed) whenever
+  // any two of those unrelated wires disagreed — common the moment more than
+  // one input is active, even though each individual wire is unambiguous.
+  const edgesArray: OverviewEdge[] = Object.values(renderGraph).flatMap(n =>
+    n.inputs.flatMap(input => {
+      const wires = n.inputWireMap?.[input] ?? [input];
+      return wires.map(wire => ({
+        id: `${wire}->${n.id}`,
+        from: input,
+        to: n.id,
+        smooth: false as const,
+        sourceWireIds: [wire],
+      }));
+    })
   );
+
+  // Multiple edges now commonly share the same node pair — with smooth off
+  // they'd draw as one indistinguishable straight line, silently hiding all
+  // but whichever one happened to paint last. Curve them apart (alternating
+  // sides, increasing roundness) so each wire's own color is actually visible.
+  const edgesByPair = new Map<string, OverviewEdge[]>();
+  for (const e of edgesArray) {
+    const key = `${e.from}->${e.to}`;
+    (edgesByPair.get(key) ?? edgesByPair.set(key, []).get(key)!).push(e);
+  }
+  for (const group of edgesByPair.values()) {
+    if (group.length <= 1) continue;
+    group.forEach((e, i) => {
+      e.smooth = { enabled: true, type: i % 2 === 0 ? 'curvedCW' : 'curvedCCW', roundness: 0.15 * (Math.floor(i / 2) + 1) };
+    });
+  }
 
   nodes = new DataSet<Node>(nodesArray);
   edges = new DataSet<Edge>(edgesArray);
@@ -184,9 +224,19 @@ function drawGraph(graph: LogicGraph, inputValues: Record<string, boolean>) {
       const id = params.nodes[0];
       if (graph[id]?.type === 'INPUT') {
         inputValues[id] = !inputValues[id];
-        const result = simulateGraph(graph, inputValues);
-        updateColors(filterToRendered(result), nodes, edges, undefined, result);
-        updateValues(result);
+      }
+      // Always recompute fresh — the OUTPUT and MODULE branches below used to
+      // close over the `result` from drawGraph's initial render instead,
+      // which never reflected any INPUT toggles made since. Their own value
+      // coloring (green/red) silently went stale; only the OUTPUT branch's
+      // dependency highlight (blue) stayed correct, since that depends on
+      // graph structure, not values, masking the bug entirely if you never
+      // looked closely at value colors after toggling an input first.
+      const currentResult = simulateGraph(graph, inputValues);
+
+      if (graph[id]?.type === 'INPUT') {
+        updateColors(filterToRendered(currentResult), nodes, edges, undefined, currentResult);
+        updateValues(currentResult);
       }
       if (graph[id]?.type === "OUTPUT") {
         const deps = findDependenciesForOutput(graph, id);
@@ -196,11 +246,11 @@ function drawGraph(graph: LogicGraph, inputValues: Record<string, boolean>) {
           }
         }
         relevantInputsPerOutput[id] = deps
-        updateColors(filterToRendered(result), nodes, edges, relevantInputsPerOutput[id], result);
+        updateColors(filterToRendered(currentResult), nodes, edges, relevantInputsPerOutput[id], currentResult);
       }
       const moduleNode = renderGraph[id];
       if (moduleNode?.type === 'MODULE') {
-        showModulePreview(moduleNode, graph, result);
+        showModulePreview(moduleNode, graph, currentResult);
       }
     }
   });
