@@ -9,8 +9,6 @@ Priorities: **High** = portfolio impact, **Medium** = quality & credibility,
 
 ## Low priority — optional polish
 
-- [ ] **Remove `logic-sim/src/shared/logic-graph1.json`** (2 KB) if it's an unused
-  sample.
 - [ ] **`sortByWireNumber`/`applyBitString`'s wire-number parsing silently no-ops
   on the default 4-bit adder graph.** It extracts the numeric suffix from
   `IN_<wire>`/`OUT_<wire>` ids, which only exist on circuits parsed from a
@@ -440,3 +438,11 @@ future work:
     but the two bugs actually named on this roadmap (`groupByModules`
     performance, simulation-side recursion) are genuinely fixed and verified
     independently of it.
+- Removed `logic-sim/src/shared/logic-graph1.json`. Checked first whether it
+  was actually the demo's default circuit (the premise for keeping it) —
+  it isn't: the app's real default is the hardcoded `graph4bitAdder` in
+  `graphs.ts`, loaded directly by `main.ts`. Grepping the whole repo turned up
+  zero references to `logic-graph1.json` from any code path (no `fetch`, no
+  import) — it was an inert, unused duplicate of the same 4-bit-adder circuit
+  sitting in `src/shared/`. Removing it doesn't affect the default demo or
+  the README's screenshots, since neither ever depended on this file.
