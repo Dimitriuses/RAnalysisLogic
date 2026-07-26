@@ -96,12 +96,14 @@ export function groupByModules(graph: LogicGraph, levels: Record<string, number>
         .filter(i => !nodeIds.has(i))        // keep only those not in the module
     );
 
-    // 2) Outputs: all external nodes that take at least one module node as input,
-    //    but we want the names of the module nodes feeding them (the module's output interface)
+    // 2) Outputs: the module's own node ids that at least one external node
+    //    consumes (the module's output interface) — NOT the external
+    //    consumers themselves, so this checks each node's own consumer list
+    //    for an external one rather than collecting the consumer ids.
     const outputs = new Set<string>(
       nodes
-        .flatMap(n => consumers[n.id] ?? [])  // who consumes each module node
-        .filter(consumerId => !nodeIds.has(consumerId)) // external consumers only
+        .filter(n => (consumers[n.id] ?? []).some(consumerId => !nodeIds.has(consumerId)))
+        .map(n => n.id)
     );
 
     return { inputs, outputs };

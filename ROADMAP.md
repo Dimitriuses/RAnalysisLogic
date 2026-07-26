@@ -446,3 +446,28 @@ future work:
   scrambled — confirmed (via `git stash`) it passes identically against the
   pre-fix code too, since this fix is about making already-correct-looking
   behavior explicit and engine-independent, not changing today's output.
+- Fixed a real regression the `groupByModules` performance fix (above)
+  introduced: the 64-bit adder's module overview had visibly collapsed into
+  a single horizontal line instead of its usual diagonal chain of module
+  boxes. Root cause — `countUniqueIO`'s rewritten "outputs" computation used
+  the new `consumers` reverse-index backwards: it collected each *external
+  consumer's* id instead of checking, per node, whether that node itself had
+  an external consumer. So a module's `outputs` (meant to be that module's
+  own boundary node ids, i.e. its exported-wire interface) ended up holding
+  unrelated *external* ids instead. That corrupted `producerModule` in
+  `buildModuleOverview` (which maps a wire id to the module that exports
+  it), so resolving another module's input wire to its producer silently
+  failed and fell back to the raw (unrendered) gate id — an edge to a
+  nonexistent node. `computeNodeLevelsFast` then could never fully resolve
+  those modules' in-degree to 0, so most nodes never got a real level,
+  and vis-network defaulted them all to the same row. Fixed by having
+  `outputs` check each of the module's own nodes for an external consumer
+  and collect *that node's own id*, not the consumer's. Added
+  `tools.test.ts`: a small hand-built graph with `maxModuleSize=1` gives an
+  exact, predictable two-module split, asserting each module's `outputs`
+  contains its own exported node id — confirmed (via `git stash`) this test
+  fails against the regressed code (produced the consumer's id instead) and
+  passes against the fix. Re-verified live against `64 Bit Adder.txt`
+  (correct diagonal module chain restored) and against `sha256.txt`
+  (`groupByModules` still ~1.1s, and every one of its 20,687 modules'
+  `outputs` are now confirmed to be a subset of that module's own nodes).
