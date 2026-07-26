@@ -194,6 +194,7 @@ document.getElementById('solveOutputsBtn')!.addEventListener('click', () => {
 
   const circuit = convertGraphToCircuit(graph)
   circuit.fixed_outputs = outputValues;
+  circuit.find_all_solutions = true; // this button's dropdown is specifically for browsing multiple solutions
   sendToSolver(circuit).then(data => {
     console.log(data);
     if (data.status === "unsat" || !data.solution) {

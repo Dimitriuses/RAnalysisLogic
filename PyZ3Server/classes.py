@@ -14,6 +14,9 @@ class LogicCircuit(BaseModel):
     gates: list[LogicGate]
     fixed_inputs: dict[str, bool] | None = None
     fixed_outputs: dict[str, bool] | None = None
+    # False (default): return just one satisfying assignment (fast, safe for
+    # large circuits). True: enumerate up to 1000 distinct solutions.
+    find_all_solutions: bool = False
 
 class ModuleData(BaseModel):
     id: str

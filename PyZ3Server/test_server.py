@@ -1,5 +1,10 @@
+import pytest
 from fastapi.testclient import TestClient
+
+from PyZ3Server.classes import LogicCircuit, LogicGate
+from PyZ3Server.parser import convert_to_z3
 from PyZ3Server.server import app
+from PyZ3Server.solver import solve_circuit
 
 client = TestClient(app)
 
@@ -59,7 +64,27 @@ class TestSolve:
         assert body["status"] == "unsat"
         assert body["solution"] is None
 
-    def test_fixed_outputs_enumerates_every_input_pair_with_that_sum(self):
+    def test_fixed_outputs_default_returns_a_single_valid_solution(self):
+        # find_all_solutions defaults to False: fast single-answer path
+        # (solve_circuit), even though this scenario has multiple valid inputs.
+        payload = {
+            "inputs": INPUTS,
+            "outputs": OUTPUTS,
+            "gates": ADDER_SLICE_GATES,
+            "fixed_outputs": {"441": False, "440": True, "134": False},
+        }
+        response = client.post("/solve", json=payload)
+        body = response.json()
+        assert body["status"] == "sat"
+        solutions = body["solution"]
+        assert len(solutions) == 1
+
+        model = solutions[0]
+        a_val = model["63"] + 2 * model["62"]
+        b_val = model["127"] + 2 * model["126"]
+        assert a_val + b_val == 2
+
+    def test_fixed_outputs_with_find_all_solutions_enumerates_every_input_pair(self):
         # target total = 2 (sum0=False, sum1=True, carry=False), A/B in 0..3:
         # (0,2), (1,1), (2,0) -> exactly 3 solutions
         payload = {
@@ -67,6 +92,7 @@ class TestSolve:
             "outputs": OUTPUTS,
             "gates": ADDER_SLICE_GATES,
             "fixed_outputs": {"441": False, "440": True, "134": False},
+            "find_all_solutions": True,
         }
         response = client.post("/solve", json=payload)
         body = response.json()
@@ -102,3 +128,38 @@ class TestTruthTable:
             expected = expected_result(a0, b0, a1, b1)
             got = tuple(row["output"])
             assert got == expected, row
+
+
+class TestConvertToZ3:
+    """Unit-level coverage of convert_to_z3's gate types and error paths,
+    none of which the adder-slice fixture above exercises (it's pure XOR/AND)."""
+
+    def test_not_gate_inverts_its_input(self):
+        circuit = LogicCircuit(
+            inputs=["a"],
+            outputs=["out"],
+            gates=[LogicGate(id="out", type="NOT", inputs=["a"])],
+            fixed_inputs={"a": True},
+        )
+        variables, constraints = convert_to_z3(circuit)
+        model = solve_circuit(variables, constraints)
+        assert model["out"] is False
+
+    def test_unknown_gate_type_raises(self):
+        circuit = LogicCircuit(
+            inputs=["a"],
+            outputs=["out"],
+            gates=[LogicGate(id="out", type="BOGUS", inputs=["a"])],
+        )
+        with pytest.raises(ValueError, match="Unknown gate type"):
+            convert_to_z3(circuit)
+
+    @pytest.mark.parametrize("gate_type", ["XOR", "AND", "OR"])
+    def test_two_input_gate_missing_second_input_raises(self, gate_type):
+        circuit = LogicCircuit(
+            inputs=["a"],
+            outputs=["out"],
+            gates=[LogicGate(id="out", type=gate_type, inputs=["a"])],
+        )
+        with pytest.raises(ValueError, match="missing second input"):
+            convert_to_z3(circuit)

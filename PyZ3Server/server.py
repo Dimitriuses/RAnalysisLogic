@@ -6,7 +6,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from PyZ3Server.classes import LogicCircuit, ModuleData
 from PyZ3Server.parser import convert_to_z3
-from PyZ3Server.solver import solve_all
+from PyZ3Server.solver import solve_all, solve_circuit
 
 app = FastAPI()
 
@@ -40,9 +40,11 @@ def simulate_logic(circuit: LogicCircuit):
 @app.post("/solve")
 def solve_logic_circuit(circuit: LogicCircuit):
     variables, constraints = convert_to_z3(circuit)
-    # print("w to r")
-    # result = solve_circuit(variables, constraints)
-    result = solve_all(variables, constraints)
+    if circuit.find_all_solutions:
+        result = solve_all(variables, constraints)
+    else:
+        single = solve_circuit(variables, constraints)
+        result = [single] if single is not None else None
     if result is None:
         return {"status": "unsat", "solution": None}
     else:

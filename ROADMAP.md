@@ -9,8 +9,6 @@ Priorities: **High** = portfolio impact, **Medium** = quality & credibility,
 
 ## Medium priority — quality & credibility
 
-- [ ] **Resolve `PyZ3Server/test.py`.** It's a Z3 scratch file, not a real test —
-  promote it to a proper test or delete it.
 - [ ] **Visualizer doesn't scale past small circuits.** `drawGraph`'s hierarchical
   layout (`direction: 'UD'`) places nodes by topological depth via
   `computeNodeLevelsFast`. For `64 Bit Adder.txt`, the ripple-carry chain is
@@ -128,3 +126,28 @@ future work:
     `computeNodeLevelsFast` and `groupByModules`. Also removed dead
     commented-out alternative code inside `groupByModules`. 305 → ~110 lines,
     identical production bundle hash.
+- Deleted `PyZ3Server/test.py` — it was pure z3 scratch code (a basic AND-gate
+  demo plus an unrelated tqdm progress-bar experiment), nothing that exercised
+  the project's own `LogicCircuit`/`convert_to_z3` code, so there was nothing
+  in it worth promoting.
+- Reconnected `solve_circuit` to `/solve`. It had gone unused (and its import
+  removed) after the earlier `solve_all` bugfix — but per design intent it's
+  the right default for large circuits, where enumerating solutions is
+  wasted work if you just want one answer fast. `LogicCircuit` gained a
+  `find_all_solutions` field (default `False` → single answer via
+  `solve_circuit`; `True` → up to 1000 via `solve_all`, unchanged from
+  before). Wired the frontend's two Solve buttons to match their actual
+  intent: "Solve" (fixed inputs) leaves the default alone, since a
+  fully-fixed-input circuit only has one solution anyway; "Solve (fix
+  outputs)" now explicitly sets `find_all_solutions: true`, since its
+  dropdown UI is specifically for browsing multiple solutions. Verified live
+  against the running backend (`curl`) that the same fixed-outputs query
+  returns 1 solution by default and all 3 valid `(A, B)` pairs with the flag
+  set.
+- Added unit-level tests for `convert_to_z3`'s gate/error paths that the
+  existing adder-slice fixture never touches (it's pure XOR/AND): the `NOT`
+  gate, the "unknown gate type" `ValueError`, and the "missing second input"
+  `ValueError` for XOR/AND/OR. Also split the fixed-outputs `/solve` test into
+  two — one pinning the new single-solution default, one for
+  `find_all_solutions: true` — since the behavior change above would
+  otherwise have silently changed what the original test was asserting.

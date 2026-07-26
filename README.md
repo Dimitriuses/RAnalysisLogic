@@ -26,7 +26,7 @@ The idea: represent a hash function as a plain boolean circuit (AND/OR/XOR/NOT/N
   - Sends a circuit to the backend solver with either the inputs or the outputs fixed, to search for satisfying assignments.
 - **`PyZ3Server/`** — FastAPI + [Z3](https://github.com/Z3Prover/z3) backend.
   - Converts a circuit into Z3 boolean formulas.
-  - `POST /solve` — enumerates up to 1000 satisfying models for a circuit (given fixed inputs or fixed outputs).
+  - `POST /solve` — given fixed inputs and/or fixed outputs, returns one satisfying model by default (fast; safe for large circuits), or up to 1000 distinct models if `find_all_solutions: true` is set.
   - `POST /truth-table` — brute-force truth table for a small circuit module.
 
 ## Sample circuits

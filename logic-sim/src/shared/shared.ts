@@ -12,6 +12,9 @@ export interface LogicCircuit {
   gates: LogicGate[];
   fixed_inputs?: Record<string, boolean>;
   fixed_outputs?: Record<string, boolean>;
+  // False (default, server-side): return just one satisfying assignment.
+  // True: enumerate up to 1000 distinct solutions.
+  find_all_solutions?: boolean;
 }
 
 export interface SATResponce {
