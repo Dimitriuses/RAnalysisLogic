@@ -9,8 +9,6 @@ Priorities: **High** = portfolio impact, **Medium** = quality & credibility,
 
 ## Medium priority — quality & credibility
 
-- [ ] **Minimal CI** (GitHub Actions): `tsc --noEmit` for the frontend and
-  `py_compile` (or `ruff`) for the backend, so the green check is public.
 - [ ] **Clean up dead/debug code.** Commented-out scaffolding and stray
   `console.log`s remain across `logic-sim/src/main.ts`, `logic-sim/src/tools.ts`,
   and `PyZ3Server/solver.py`. Notably, `computeNodeLevels` in
@@ -93,3 +91,14 @@ future work:
   `data.solution === null` for the first time, so it now checks
   `status`/`solution` before calling `populateDropdown` instead of crashing
   into the "backend unavailable" disclaimer.
+- Added minimal CI (`.github/workflows/ci.yml`, on push to `main` and on every
+  PR) plus a CI badge in the README. Frontend job: `tsc --noEmit` +
+  `npm run test` (Vitest). Backend job: `ruff check PyZ3Server` + the pytest
+  suite. Scoped ruff to pyflakes rules only (`PyZ3Server/pyproject.toml`,
+  `select = ["F"]`) rather than its full default set, which is mostly
+  pyupgrade style modernization (`Dict` → `dict`, `Optional` → `X | None`) —
+  that's a much bigger, separate cleanup, not a "minimal CI" concern. Fixed
+  the ~15 real pyflakes hits this surfaced: unused imports across
+  `server.py`/`parser.py`/`solver.py`/`test.py`, and 4 unused `start`/`end`
+  timer variables (and the now-unused `time` import) in `solver.py` that only
+  fed already-commented-out print statements.

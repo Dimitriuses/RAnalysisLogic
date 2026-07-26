@@ -1,5 +1,5 @@
-from typing import Dict, Optional
-from z3 import Xor, Bool, And, Or, Not, Solver, BoolRef
+from typing import Dict
+from z3 import Xor, Bool, And, Or, Not, BoolRef
 
 from PyZ3Server.classes import LogicCircuit
 

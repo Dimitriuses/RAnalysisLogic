@@ -1,5 +1,3 @@
-import sys
-import os
 from itertools import product
 
 # & "C:\Program Files\Python310\python.exe" -m uvicorn PyZ3Server.server:app --reload
@@ -7,12 +5,10 @@ from itertools import product
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from typing import List, Dict, Union
 
 from PyZ3Server.classes import LogicCircuit, ModuleData
 from PyZ3Server.parser import convert_to_z3
-from PyZ3Server.solver import solve_all, solve_circuit
+from PyZ3Server.solver import solve_all
 
 app = FastAPI()
 

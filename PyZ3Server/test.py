@@ -1,4 +1,4 @@
-from z3 import Bool, And, Or, Not, Solver
+from z3 import Bool, And, Solver
 
 a = Bool("a")
 b = Bool("b")

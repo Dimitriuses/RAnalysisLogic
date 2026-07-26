@@ -1,5 +1,7 @@
 # RAnalysisLogic
 
+[![CI](https://github.com/Dimitriuses/RAnalysisLogic/actions/workflows/ci.yml/badge.svg)](https://github.com/Dimitriuses/RAnalysisLogic/actions/workflows/ci.yml)
+
 A boolean logic circuit visualizer, simulator, and SAT-based solver, built with the long-term goal of analyzing **SHA-256** as a boolean circuit and exploring a **collision attack** against it.
 
 > **Status: unfinished / experimental.** The circuit visualizer and simulator work well on arbitrary circuits. The SAT-solving backend works on small-to-medium circuits. The original goal — using it to actually find SHA-256 collisions — is not implemented; the full SHA-256 circuit is far too large (116k+ gates) for the current brute-force solving approach to handle.
@@ -64,11 +66,13 @@ uvicorn PyZ3Server.server:app --reload
 ```
 Runs on `http://localhost:8000`. CORS is currently only configured for `http://localhost:5173`.
 
-Tests ([pytest](https://pytest.org/)): from the **repository root** (same
-package-path reason as above),
+Tests ([pytest](https://pytest.org/)) and lint ([ruff](https://docs.astral.sh/ruff/),
+pyflakes rules only — see `PyZ3Server/pyproject.toml`): from the **repository
+root** (same package-path reason as above),
 ```bash
 pip install -r PyZ3Server/requirements-dev.txt
 python -m pytest PyZ3Server
+ruff check PyZ3Server
 ```
 
 ## Generating circuit files

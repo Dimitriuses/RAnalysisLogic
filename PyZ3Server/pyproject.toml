@@ -1,0 +1,5 @@
+[tool.ruff.lint]
+# Pyflakes only (unused imports/variables, undefined names, etc.) — real bugs,
+# not the pyupgrade/style rules (e.g. Dict -> dict, Optional -> X | None),
+# which would be a much larger, separate cleanup.
+select = ["F"]
