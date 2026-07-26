@@ -7,10 +7,6 @@ legible and credible to a visitor, plus a few research directions.
 Priorities: **High** = portfolio impact, **Medium** = quality & credibility,
 **Low** = optional polish.
 
-## High priority — portfolio impact
-
-- [ ] **Add a LICENSE** (MIT, to match `brickwork-ssg`).
-
 ## Medium priority — quality & credibility
 
 - [ ] **Parser regression test.** Lock in the recent header-format fix: assert that
@@ -83,3 +79,4 @@ future work:
 - Added `screenshots/` (circuit graph, `INPUT` toggle propagation, `OUTPUT`
   dependency highlight — all on the default 4-bit adder) and embedded them in
   the README.
+- Added an MIT `LICENSE`.
