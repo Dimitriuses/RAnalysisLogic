@@ -151,3 +151,22 @@ future work:
   two — one pinning the new single-solution default, one for
   `find_all_solutions: true` — since the behavior change above would
   otherwise have silently changed what the original test was asserting.
+- Fixed two CI failures that only showed up on a genuinely clean environment
+  (my local `.venv` masked both, since it had picked up extra packages over
+  the course of this project that neither requirements file ever declared):
+  - `npm ci` failed in both workflows with "Missing: esbuild@0.28.1 from lock
+    file". The lock file was generated with npm 11 (lenient about recording
+    optional peer deps — here, `vitest`'s nested bundled `vite@8.1.5`
+    optionally peers on `esbuild ^0.27/^0.28`); CI's Node 20 bundles npm 10,
+    which validates the same lock file more strictly and refuses to proceed
+    without every optional-peer platform variant explicitly recorded.
+    Reproduced locally with `npx npm@10.8.2 ci`, then regenerated
+    `logic-sim/package-lock.json` with that same npm version so it now
+    satisfies both. `package.json` itself is unchanged — no dependency was
+    added, removed, or bumped.
+  - `python -m pytest PyZ3Server` failed CI with
+    `ModuleNotFoundError: No module named 'httpx'` — `fastapi.testclient.TestClient`
+    requires `httpx`, but it was never declared in `requirements-dev.txt`; it
+    happened to already be present in my local `.venv`. Reproduced in a truly
+    fresh venv (`python -m venv` + install from `requirements-dev.txt` only)
+    and added `httpx==0.28.1` there.
