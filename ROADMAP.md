@@ -12,7 +12,11 @@ Priorities: **High** = portfolio impact, **Medium** = quality & credibility,
 - [ ] **Clean up dead/debug code.** Commented-out scaffolding and stray
   `console.log`s remain across `logic-sim/src/main.ts`, `logic-sim/src/tools.ts`,
   and `PyZ3Server/solver.py`. Notably, `computeNodeLevels` in
-  `logic-sim/src/tools.ts` has a `console.log` inside a hot DFS loop.
+  `logic-sim/src/tools.ts` has a `console.log` inside a hot DFS loop. While
+  we're in there: pyupgrade-style modernization of the backend's type hints
+  (`typing.Dict`/`List`/`Optional[X]` → the builtin `dict`/`list`/`X | None`
+  syntax) — purely cosmetic, so bundled into this housekeeping pass rather
+  than given its own item.
 - [ ] **Resolve `PyZ3Server/test.py`.** It's a Z3 scratch file, not a real test —
   promote it to a proper test or delete it.
 - [ ] **Visualizer doesn't scale past small circuits.** `drawGraph`'s hierarchical
