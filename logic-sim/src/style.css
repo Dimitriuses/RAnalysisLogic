@@ -132,6 +132,11 @@ button:focus-visible {
   z-index: 10;
 }
 
+#applyOutputs {
+  position: relative;
+  z-index: 10;
+}
+
 #solveBtn {
   position: relative;
   z-index: 10;

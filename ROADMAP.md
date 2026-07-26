@@ -24,6 +24,20 @@ Priorities: **High** = portfolio impact, **Medium** = quality & credibility,
 
 - [ ] **Remove `logic-sim/src/shared/logic-graph1.json`** (2 KB) if it's an unused
   sample.
+- [ ] **`sortByWireNumber`/`applyBitString`'s wire-number parsing silently no-ops
+  on the default 4-bit adder graph.** It extracts the numeric suffix from
+  `IN_<wire>`/`OUT_<wire>` ids, which only exist on circuits parsed from a
+  Bristol file. The hardcoded `graph4bitAdder` (`graphs.ts`) instead uses
+  plain ids like `"OUT1"`/`"COUT"` with no `_<number>` to extract, so every
+  comparison is `NaN` and the sort is a no-op — it currently *looks* correct
+  only because `Array.sort` is stable and the object's own property-definition
+  order already happens to match the intended bit order. Harmless today, but
+  fragile: reordering `graph4bitAdder`'s properties, or adding another
+  hardcoded graph with different id conventions, would silently scramble the
+  displayed/typed bit strings with no error. Worth either giving
+  `graph4bitAdder`'s ids the same `_<wire>` convention, or making the sort
+  fall back sanely (e.g. leave order unchanged, explicitly) when it can't
+  parse a wire number.
 
 ## Research directions
 
@@ -170,3 +184,16 @@ future work:
     happened to already be present in my local `.venv`. Reproduced in a truly
     fresh venv (`python -m venv` + install from `requirements-dev.txt` only)
     and added `httpx==0.28.1` there.
+- Fixed "Solve (fix outputs)" requiring the user to already know a valid
+  answer before they could ask the solver for one: "Output bits:" was
+  `readonly` in `index.html`, with no way to type a target and no "Set
+  Outputs" button, so the only way `outputValues` ever changed was by clicking
+  `INPUT` nodes and letting simulation derive it — circular for a feature
+  whose whole point is "I don't know the inputs, find them for me." Removed
+  `readonly`, added a "Set Outputs" button, and generalized `settupInputs` →
+  `applyBitString` (it already worked on any `Record<string, boolean>` keyed
+  by its own wire-sorted ids, just misleadingly named for inputs only) so both
+  bit-string fields share one implementation. Verified live end-to-end
+  (Playwright against both dev servers) that typing a target directly —
+  with no input clicked first — and clicking "Set Outputs" then "Solve (fix
+  outputs)" returns real solutions from the live backend.

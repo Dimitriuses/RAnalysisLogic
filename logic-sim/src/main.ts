@@ -2,7 +2,7 @@ import './style.css'
 import { Network, type Node, type Edge, type Options } from 'vis-network';
 import { DataSet } from 'vis-data';
 import type { LogicNode, LogicGraph } from './classes.ts';
-import { findDependenciesForOutput, generateInputs, getInputs, getOutputs, settupInputs, simulateGraph } from './logic.ts';
+import { applyBitString, findDependenciesForOutput, generateInputs, getInputs, getOutputs, simulateGraph } from './logic.ts';
 import { graph4bitAdder } from './graphs.ts';
 import { computeNodeLevelsFast, groupByModules } from './tools.ts';
 import { parseCircuitFile } from './shared/parser.ts';
@@ -136,8 +136,8 @@ fileInput.addEventListener('change', async (e) => {
 });
 
 // Wire IDs are named "IN_<wire>" / "OUT_<wire>"; ascending wire number is the
-// circuit's own MSB-first bit order (see parser.ts / settupInputs), so sort on
-// it to keep the displayed bit string consistent with what "Set Inputs" accepts.
+// circuit's own MSB-first bit order (see parser.ts / applyBitString), so sort on
+// it to keep the displayed bit string consistent with what "Set Inputs"/"Set Outputs" accept.
 function sortByWireNumber(entries: [string, boolean][]): [string, boolean][] {
   return entries.sort(([a], [b]) => {
     const na = parseInt(a.split('_').pop()!, 10);
@@ -159,8 +159,16 @@ function updateBitOutputDisplay(outputs: Record<string, boolean>) {
 // Set Inputs from bit string
 document.getElementById('applyInputs')!.addEventListener('click', () => {
   const val = (document.getElementById('bitInput') as HTMLInputElement).value.trim();
-  inputValues = settupInputs(inputValues, val)
+  inputValues = applyBitString(inputValues, val)
   drawGraph(graph, inputValues)
+});
+
+// Set a target for Output bits (used by "Solve (fix outputs)") without
+// requiring the user to first manually reach that output via the inputs.
+document.getElementById('applyOutputs')!.addEventListener('click', () => {
+  const val = (document.getElementById('bitOutput') as HTMLInputElement).value.trim();
+  outputValues = applyBitString(outputValues, val)
+  updateBitOutputDisplay(outputValues);
 });
 
 document.getElementById('downloadBtn')!.addEventListener('click', () => {
