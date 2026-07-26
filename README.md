@@ -4,6 +4,12 @@ A boolean logic circuit visualizer, simulator, and SAT-based solver, built with 
 
 > **Status: unfinished / experimental.** The circuit visualizer and simulator work well on arbitrary circuits. The SAT-solving backend works on small-to-medium circuits. The original goal — using it to actually find SHA-256 collisions — is not implemented; the full SHA-256 circuit is far too large (116k+ gates) for the current brute-force solving approach to handle.
 
+| Circuit graph | `INPUT` toggle → propagation | `OUTPUT` dependency highlight |
+| --- | --- | --- |
+| ![Circuit graph](screenshots/circuit-graph.png) | ![Input toggle](screenshots/input-toggle.png) | ![Output dependency highlight](screenshots/output-dependencies.png) |
+
+**[Try the live demo](https://dimitriuses.github.io/RAnalysisLogic/)** (see [Live demo](#live-demo) below for what does/doesn't work there).
+
 ## What this is
 
 The idea: represent a hash function as a plain boolean circuit (AND/OR/XOR/NOT/NAND/NOR gates), then use a SAT solver to ask questions like "which inputs produce this output?" or "do two different inputs produce the same output?" (a collision). This repo is the tooling built toward that goal — a circuit loader/visualizer/simulator on the frontend, and a Z3-backed solver on the backend — exercised so far on a 64-bit adder and on a full SHA-256 circuit.

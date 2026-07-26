@@ -9,10 +9,6 @@ Priorities: **High** = portfolio impact, **Medium** = quality & credibility,
 
 ## High priority — portfolio impact
 
-- [ ] **Screenshots / GIF in the README.** This is a visual project with no images
-  yet — the biggest gap. Capture the circuit graph with colored wires, flipping an
-  `INPUT` bit and watching values propagate, and the `OUTPUT`-dependency
-  highlighting. A short GIF of the 64-bit adder is enough.
 - [ ] **Add a LICENSE** (MIT, to match `brickwork-ssg`).
 
 ## Medium priority — quality & credibility
@@ -32,6 +28,16 @@ Priorities: **High** = portfolio impact, **Medium** = quality & credibility,
   `logic-sim/src/tools.ts` has a `console.log` inside a hot DFS loop.
 - [ ] **Resolve `PyZ3Server/test.py`.** It's a Z3 scratch file, not a real test —
   promote it to a proper test or delete it.
+- [ ] **Visualizer doesn't scale past small circuits.** `drawGraph`'s hierarchical
+  layout (`direction: 'UD'`) places nodes by topological depth via
+  `computeNodeLevelsFast`. For `64 Bit Adder.txt`, the ripple-carry chain is
+  ~250 levels deep, so it renders as a long, confusing vertical column, and
+  same-level `INPUT`/`OUTPUT` nodes aren't ordered by wire number, so they
+  don't visually group by which bit of A/B/sum they are. The default 4-bit
+  adder stays small enough to avoid this, so it's not blocking the demo, but
+  worth fixing before pointing anyone at a bigger circuit — e.g. sort
+  same-level nodes by wire number, or use a more compact/horizontal layout for
+  deep circuits.
 
 ## Low priority — optional polish
 
@@ -74,3 +80,6 @@ future work:
   precomputed-example cache for this, since both would be exploiting that an
   adder is trivially invertible rather than actually demonstrating the
   Z3-backed solver the rest of the project is about.
+- Added `screenshots/` (circuit graph, `INPUT` toggle propagation, `OUTPUT`
+  dependency highlight — all on the default 4-bit adder) and embedded them in
+  the README.
