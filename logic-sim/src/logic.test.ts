@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { simulateGraph } from './logic';
+import { simulateGraph, applyBitString } from './logic';
 import type { LogicGraph } from './classes';
 
 describe('simulateGraph', () => {
@@ -28,6 +28,34 @@ describe('simulateGraph', () => {
       OR1: true,
       OUT_AND: false,
       OUT_OR: true,
+    });
+  });
+});
+
+describe('applyBitString', () => {
+  it('preserves original key order when ids have no parseable wire number (e.g. graph4bitAdder)', () => {
+    // graph4bitAdder (graphs.ts) uses plain ids like "OUT1"/"COUT" with no
+    // "_<number>" suffix to sort by, unlike parsed-circuit ids ("IN_<wire>").
+    // Deliberately out of numeric/alphabetical order here, so this wouldn't
+    // pass by some other ordering coincidence — it should come back in
+    // exactly this order, not scrambled.
+    const values: Record<string, boolean> = {
+      COUT: false,
+      OUT3: false,
+      OUT1: false,
+      OUT4: false,
+      OUT2: false,
+    };
+
+    const result = applyBitString(values, '10110');
+
+    expect(Object.keys(result)).toEqual(['COUT', 'OUT3', 'OUT1', 'OUT4', 'OUT2']);
+    expect(result).toEqual({
+      COUT: true,
+      OUT3: false,
+      OUT1: true,
+      OUT4: true,
+      OUT2: false,
     });
   });
 });

@@ -492,10 +492,16 @@ fileInput.addEventListener('change', async (e) => {
 // Wire IDs are named "IN_<wire>" / "OUT_<wire>"; ascending wire number is the
 // circuit's own MSB-first bit order (see parser.ts / applyBitString), so sort on
 // it to keep the displayed bit string consistent with what "Set Inputs"/"Set Outputs" accept.
+// The hardcoded default graph (graph4bitAdder in graphs.ts) uses plain ids like
+// "OUT1"/"COUT" with no "_<number>" to extract, so na/nb are NaN for it —
+// explicitly keep those pairs in their original (already-correct) order
+// instead of returning `na - nb` (itself NaN), which is an unspecified
+// comparator result under Array.sort and only "worked" by accident.
 function sortByWireNumber(entries: [string, boolean][]): [string, boolean][] {
   return entries.sort(([a], [b]) => {
     const na = parseInt(a.split('_').pop()!, 10);
     const nb = parseInt(b.split('_').pop()!, 10);
+    if (isNaN(na) || isNaN(nb)) return 0;
     return na - nb;
   });
 }

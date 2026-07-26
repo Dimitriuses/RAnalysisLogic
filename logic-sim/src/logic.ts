@@ -175,12 +175,18 @@ export function generateInputs(graph: Record<string, LogicNode>): Record<string,
 
 // Parses a typed bit string into a wire-sorted Record<string, boolean>, using
 // `values`'s own keys to know which wires to set — works for either INPUT or
-// OUTPUT records, since both are named "IN_<wire>" / "OUT_<wire>".
+// OUTPUT records, since both are named "IN_<wire>" / "OUT_<wire>". The
+// hardcoded default graph (graph4bitAdder in graphs.ts) uses plain ids like
+// "OUT1"/"COUT" with no "_<number>" to extract, so aNum/bNum are NaN for it —
+// explicitly keep those pairs in their original (already-correct) order
+// instead of returning `aNum - bNum` (itself NaN), which is an unspecified
+// comparator result under Array.sort and only "worked" by accident.
 export function applyBitString(values: Record<string, boolean>, setupString: string): Record<string, boolean> {
   const result: Record<string, boolean> = {};
   const keys = Object.keys(values).sort((a, b) => {
     const aNum = parseInt(a.split('_')[1], 10);
     const bNum = parseInt(b.split('_')[1], 10);
+    if (isNaN(aNum) || isNaN(bNum)) return 0;
     return aNum - bNum;
   });
   keys.forEach((v, i) => {

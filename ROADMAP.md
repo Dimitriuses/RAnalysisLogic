@@ -1,28 +1,8 @@
 # Roadmap
 
 Outstanding work for RAnalysisLogic. The core is functional and the code has been
-cleaned up (see [Done](#done)); most of what remains is about making the project
-legible and credible to a visitor, plus a few research directions.
-
-Priorities: **High** = portfolio impact, **Medium** = quality & credibility,
-**Low** = optional polish.
-
-## Low priority — optional polish
-
-- [ ] **`sortByWireNumber`/`applyBitString`'s wire-number parsing silently no-ops
-  on the default 4-bit adder graph.** It extracts the numeric suffix from
-  `IN_<wire>`/`OUT_<wire>` ids, which only exist on circuits parsed from a
-  Bristol file. The hardcoded `graph4bitAdder` (`graphs.ts`) instead uses
-  plain ids like `"OUT1"`/`"COUT"` with no `_<number>` to extract, so every
-  comparison is `NaN` and the sort is a no-op — it currently *looks* correct
-  only because `Array.sort` is stable and the object's own property-definition
-  order already happens to match the intended bit order. Harmless today, but
-  fragile: reordering `graph4bitAdder`'s properties, or adding another
-  hardcoded graph with different id conventions, would silently scramble the
-  displayed/typed bit strings with no error. Worth either giving
-  `graph4bitAdder`'s ids the same `_<wire>` convention, or making the sort
-  fall back sanely (e.g. leave order unchanged, explicitly) when it can't
-  parse a wire number.
+cleaned up (see [Done](#done)); what remains is a couple of bigger research
+directions rather than a backlog of smaller fixes.
 
 ## Research directions
 
@@ -446,3 +426,23 @@ future work:
   import) — it was an inert, unused duplicate of the same 4-bit-adder circuit
   sitting in `src/shared/`. Removing it doesn't affect the default demo or
   the README's screenshots, since neither ever depended on this file.
+- Fixed `sortByWireNumber`/`applyBitString` relying on unspecified
+  `Array.sort` behavior. Both parse a wire number out of `IN_<wire>`/
+  `OUT_<wire>` ids to sort by; the hardcoded default `graph4bitAdder`
+  (`graphs.ts`) uses plain ids like `"OUT1"`/`"COUT"` with no `_<number>` to
+  extract, so both `na`/`nb` come out `NaN` and the comparator itself
+  returned `NaN` — which happened to *look* like a stable no-op only because
+  of how engines currently treat a non-numeric comparator result, not
+  because anything guaranteed it. Fixed by explicitly returning `0` (keep
+  original order) when either side can't be parsed, instead of returning the
+  NaN subtraction directly — same visible behavior today, but no longer
+  depending on an unspecified case. Chose this over renaming
+  `graph4bitAdder`'s ids to the `_<wire>` convention, since the labels
+  ("A1"/"B1"/"CIN"/"OUT1"/"COUT") are what the README's screenshots and the
+  default demo actually show — renaming them for this fix would trade one
+  fragility for a visible regression. Added a regression test
+  (`logic.test.ts`) with keys deliberately out of numeric/alphabetical order,
+  asserting the bit string is assigned by original insertion order, not
+  scrambled — confirmed (via `git stash`) it passes identically against the
+  pre-fix code too, since this fix is about making already-correct-looking
+  behavior explicit and engine-independent, not changing today's output.
