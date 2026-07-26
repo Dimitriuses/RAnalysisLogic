@@ -263,6 +263,10 @@ document.getElementById('solveOutputsBtn')!.addEventListener('click', () => {
   // console.log("ok")
   sendToSolver(circuit).then(data => {
     console.log(data);
+    if (data.status === "unsat" || !data.solution) {
+      alert("No solution exists for these fixed outputs.");
+      return;
+    }
     populateDropdown(data.solution)
   }).catch(showSolverUnavailableNotice)
 

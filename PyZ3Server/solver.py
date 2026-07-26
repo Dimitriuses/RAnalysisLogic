@@ -33,8 +33,8 @@ def solve_all(variables: Dict[str, BoolRef], constraints: List[BoolRef]):
         # out[f"Model #{i + 1}"] = mi
     end = time.perf_counter()
     # print(f" {end - start:.6f}s")
-    return out
-    
+    return out if out else None
+
 def get_all_models(solver, variables):
     models = []
     start = time.perf_counter()

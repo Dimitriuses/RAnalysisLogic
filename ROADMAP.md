@@ -9,8 +9,6 @@ Priorities: **High** = portfolio impact, **Medium** = quality & credibility,
 
 ## Medium priority — quality & credibility
 
-- [ ] **Backend test.** A small pytest for `/truth-table` and `/solve` against the
-  64-bit adder.
 - [ ] **Minimal CI** (GitHub Actions): `tsc --noEmit` for the frontend and
   `py_compile` (or `ruff`) for the backend, so the green check is public.
 - [ ] **Clean up dead/debug code.** Commented-out scaffolding and stray
@@ -80,3 +78,18 @@ future work:
   output counts for both the old-Bristol 2-line header (`sha256.txt`, 116246
   gates) and Bristol Fashion 3-line header (`64 Bit Adder.txt`, 314 gates), and
   asserts every `OUTPUT` resolves to a real producer node.
+- Added a backend pytest suite (`PyZ3Server/test_server.py`,
+  `PyZ3Server/requirements-dev.txt`, `python -m pytest PyZ3Server`) covering
+  `/solve` (sat via fixed inputs, unsat via contradictory fixed inputs +
+  outputs, multi-solution enumeration via fixed outputs) and `/truth-table`
+  against all 16 rows — using a 2-bit slice copied verbatim (same wire numbers
+  and gate types) from the first 7 gate lines of `64 Bit Adder.txt`, so the
+  test exercises the real adder wiring. Writing the unsat case surfaced a real
+  bug: `solve_all` always returned a list (`[]` on unsat), so `/solve`'s
+  `if result is None` unsat check never fired and every unsat query silently
+  came back `{"status": "sat", "solution": []}`. Fixed `solve_all` to return
+  `None` when empty, matching `solve_circuit`'s existing contract — which in
+  turn meant `main.ts`'s "Solve (fix outputs)" handler could now actually see
+  `data.solution === null` for the first time, so it now checks
+  `status`/`solution` before calling `populateDropdown` instead of crashing
+  into the "backend unavailable" disclaimer.

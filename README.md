@@ -64,6 +64,13 @@ uvicorn PyZ3Server.server:app --reload
 ```
 Runs on `http://localhost:8000`. CORS is currently only configured for `http://localhost:5173`.
 
+Tests ([pytest](https://pytest.org/)): from the **repository root** (same
+package-path reason as above),
+```bash
+pip install -r PyZ3Server/requirements-dev.txt
+python -m pytest PyZ3Server
+```
+
 ## Generating circuit files
 
 There are two kinds of circuit file, and neither large one needs to be committed —

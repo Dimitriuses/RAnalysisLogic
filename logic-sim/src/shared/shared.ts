@@ -16,7 +16,7 @@ export interface LogicCircuit {
 
 export interface SATResponce {
   status: "sat" | "unsat";
-  solution: Record<string, boolean>[];
+  solution: Record<string, boolean>[] | null;
 }
 
 export function convertGraphToCircuit(graph: LogicGraph): LogicCircuit {
