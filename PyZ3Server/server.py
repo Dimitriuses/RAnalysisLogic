@@ -2,10 +2,8 @@ from itertools import product
 
 # & "C:\Program Files\Python310\python.exe" -m uvicorn PyZ3Server.server:app --reload
 # sys.path.append(os.path.dirname(__file__))  # add the current folder to the path
-
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-
 from PyZ3Server.classes import LogicCircuit, ModuleData
 from PyZ3Server.parser import convert_to_z3
 from PyZ3Server.solver import solve_all

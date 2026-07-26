@@ -1,8 +1,8 @@
 from tqdm import tqdm
-from typing import Dict, List
-from z3 import Solver, BoolRef, sat, Or
+from z3 import BoolRef, Or, Solver, sat
 
-def solve_circuit(variables: Dict[str, BoolRef], constraints: List[BoolRef]):
+
+def solve_circuit(variables: dict[str, BoolRef], constraints: list[BoolRef]):
     solver = Solver()
     solver.add(constraints)
 
@@ -15,40 +15,21 @@ def solve_circuit(variables: Dict[str, BoolRef], constraints: List[BoolRef]):
     else:
         return None
     
-def solve_all(variables: Dict[str, BoolRef], constraints: List[BoolRef]):
+def solve_all(variables: dict[str, BoolRef], constraints: list[BoolRef]):
     solver = Solver()
     solver.add(constraints)
     models = get_all_models(solver, variables)
     out = []
-    # print(filter(lambda v: v, constraints))
-    for i, model in tqdm(enumerate(models), total=len(models)):
+    for model in tqdm(models):
         out.append({str(var): bool(model[var]) if model[var] is not None else None for var in variables.values()})
-        # print("\rmaping   ", i + 1, end="",)
-        # print("".join(["1" if v else "0" for v in mi.values()]))
-        # print({k: v for k, v in mi.items() if k.find("A") != -1 or k.find("B") != -1 or k.find("CIN") != -1})
-        # for name in sorted(variables):
-        #     {name} = {model.eval(variables[name], model_completion=True)}
-        # out[f"Model #{i + 1}"] = mi
     return out if out else None
 
 def get_all_models(solver, variables):
     models = []
-    # while solver.check() == sat:
-    #     if len(models) >= 1000: break
-    #     model = solver.model()
-    #     models.append(model)
-    #     print("\rmodeling ", len(models), end="",)
-    #     # Build a constraint that excludes the current model
-    #     block = []
-    #     for var in variables:
-    #         val = model.eval(variables[var], model_completion=True)
-    #         block.append(variables[var] != val)
-    #     solver.add(Or(block))  # exclude the current combination
     for i in tqdm(range(1000)):
         if solver.check() != sat: break
         model = solver.model()
         models.append(model)
-        # print("\rmodeling ", len(models), end="",)
         # Build a constraint that excludes the current model
         block = []
         for var in variables:

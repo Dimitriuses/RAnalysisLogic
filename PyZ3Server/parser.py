@@ -1,14 +1,13 @@
-from typing import Dict
-from z3 import Xor, Bool, And, Or, Not, BoolRef
-
 from PyZ3Server.classes import LogicCircuit
+from z3 import And, Bool, BoolRef, Not, Or, Xor
+
 
 def convert_to_z3(
     circuit: LogicCircuit,
     
 ):
     # Create all variables
-    variables: Dict[str, BoolRef] = {}
+    variables: dict[str, BoolRef] = {}
 
     # Inputs first
     for name in circuit.inputs:

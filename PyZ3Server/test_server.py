@@ -1,5 +1,4 @@
 from fastapi.testclient import TestClient
-
 from PyZ3Server.server import app
 
 client = TestClient(app)

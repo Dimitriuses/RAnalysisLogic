@@ -9,14 +9,6 @@ Priorities: **High** = portfolio impact, **Medium** = quality & credibility,
 
 ## Medium priority — quality & credibility
 
-- [ ] **Clean up dead/debug code.** Commented-out scaffolding and stray
-  `console.log`s remain across `logic-sim/src/main.ts`, `logic-sim/src/tools.ts`,
-  and `PyZ3Server/solver.py`. Notably, `computeNodeLevels` in
-  `logic-sim/src/tools.ts` has a `console.log` inside a hot DFS loop. While
-  we're in there: pyupgrade-style modernization of the backend's type hints
-  (`typing.Dict`/`List`/`Optional[X]` → the builtin `dict`/`list`/`X | None`
-  syntax) — purely cosmetic, so bundled into this housekeeping pass rather
-  than given its own item.
 - [ ] **Resolve `PyZ3Server/test.py`.** It's a Z3 scratch file, not a real test —
   promote it to a proper test or delete it.
 - [ ] **Visualizer doesn't scale past small circuits.** `drawGraph`'s hierarchical
@@ -106,3 +98,33 @@ future work:
   `server.py`/`parser.py`/`solver.py`/`test.py`, and 4 unused `start`/`end`
   timer variables (and the now-unused `time` import) in `solver.py` that only
   fed already-commented-out print statements.
+- Modernized the backend's type hints (`typing.Dict`/`List`/`Optional[X]` →
+  the builtin `dict`/`list`/`X | None` syntax) across `classes.py`,
+  `parser.py`, and `solver.py`, plus the import-sort cleanup that came with it
+  (`ruff --select UP,I001 --fix`, then removing the now-unused `typing`
+  imports the fixer left behind).
+- Cleaned up dead/debug code:
+  - `PyZ3Server/solver.py`: removed the fully commented-out alternative
+    `get_all_models` implementation (a dead `while`-loop version of the active
+    `for`-loop one) and assorted stray debug comments.
+  - `logic-sim/src/main.ts`: removed a second, fully redundant `fileInput`
+    'change' listener — an earlier draft that re-parsed the file into a
+    shadowed local `graph` and never updated app state, superseded by the
+    listener that actually calls `groupByModules`/`generateInputs`/`drawGraph`
+    (both fired on every upload, parsing the file twice). Also removed the
+    dead `inputIds`-driven loop in the "Set Inputs" handler (`inputIds` was
+    never populated — always empty, so the loop was a no-op even before the
+    listener that would've populated it was itself dead) and a large block of
+    commented-out scaffolding/console.logs throughout. Verified live
+    (Playwright against the dev server) that uploading `64 Bit Adder.txt`
+    still parses/redraws/populates the bit displays correctly with no console
+    errors. 345 → 246 lines, identical production bundle hash (confirms the
+    removed code was already unreachable, not just untidy).
+  - `logic-sim/src/tools.ts`: deleted three fully unused, superseded
+    functions — `computeNodeLevels` (the one with the flagged `console.log`
+    inside its hot DFS loop), `computeNodeLevelsTopological`, and `tarjan` —
+    plus `groupNodesByLevel`, none referenced anywhere outside their own
+    definitions (confirmed by grep across `logic-sim/src`); all superseded by
+    `computeNodeLevelsFast` and `groupByModules`. Also removed dead
+    commented-out alternative code inside `groupByModules`. 305 → ~110 lines,
+    identical production bundle hash.

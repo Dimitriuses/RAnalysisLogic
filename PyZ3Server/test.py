@@ -1,4 +1,4 @@
-from z3 import Bool, And, Solver
+from z3 import And, Bool, Solver
 
 a = Bool("a")
 b = Bool("b")
@@ -16,8 +16,9 @@ print(solver.model())
 # fixed_outputs = {"outputZ": True}
 # print()
 
-from tqdm import tqdm
 import time
+
+from tqdm import tqdm
 
 for i in tqdm(range(100)):
     time.sleep(0.05)  # Simulating a task
