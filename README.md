@@ -51,6 +51,8 @@ npm run dev
 ```
 Opens on `http://localhost:5173`. Upload a circuit file with the file picker, or use the hardcoded 4-bit adder that loads by default.
 
+Tests ([Vitest](https://vitest.dev/)): `npm run test` (from `logic-sim/`).
+
 **Backend** — run from the **repository root**, not from inside `PyZ3Server/`. The
 server uses package imports (`from PyZ3Server.classes import …`), so uvicorn must
 see `PyZ3Server` as a package on the path:

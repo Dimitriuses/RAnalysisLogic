@@ -9,11 +9,6 @@ Priorities: **High** = portfolio impact, **Medium** = quality & credibility,
 
 ## Medium priority — quality & credibility
 
-- [ ] **Parser regression test.** Lock in the recent header-format fix: assert that
-  both layouts parse to the declared gate count — the old Bristol 2-line header
-  (`sha256.txt`, 116246 gates) and the Bristol Fashion 3-line header
-  (`64 Bit Adder.txt`, 314 gates) — and that output wires all resolve to a
-  producer (no phantom inputs).
 - [ ] **Backend test.** A small pytest for `/truth-table` and `/solve` against the
   64-bit adder.
 - [ ] **Minimal CI** (GitHub Actions): `tsc --noEmit` for the frontend and
@@ -80,3 +75,8 @@ future work:
   dependency highlight — all on the default 4-bit adder) and embedded them in
   the README.
 - Added an MIT `LICENSE`.
+- Added a parser regression test suite ([Vitest](https://vitest.dev/),
+  `logic-sim/src/shared/parser.test.ts`, `npm run test`): pins the gate/input/
+  output counts for both the old-Bristol 2-line header (`sha256.txt`, 116246
+  gates) and Bristol Fashion 3-line header (`64 Bit Adder.txt`, 314 gates), and
+  asserts every `OUTPUT` resolves to a real producer node.
