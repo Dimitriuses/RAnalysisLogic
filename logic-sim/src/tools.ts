@@ -1,6 +1,14 @@
-import type { LogicGraph, LogicNode, ModuleData } from "./classes";
+import type { LogicGraph, LogicNode, ModuleData, OverviewGraph, OverviewNode } from "./classes";
 
-export function computeNodeLevelsFast(graph: Record<string, LogicNode>): Record<string, number> {
+// Only id/inputs/type are needed to compute levels, so this accepts either a
+// LogicGraph or an OverviewGraph (whose 'MODULE' type isn't part of LogicGateType).
+interface LevelableNode {
+  id: string;
+  inputs: string[];
+  type: string;
+}
+
+export function computeNodeLevelsFast(graph: Record<string, LevelableNode>): Record<string, number> {
   const levels: Record<string, number> = {};
   const inDegree: Record<string, number> = {};
   const dependents: Record<string, string[]> = {};
@@ -108,4 +116,109 @@ export function groupByModules(graph: LogicGraph, levels: Record<string, number>
   const io = countUniqueIO(currentGroup, graph)
   pushGroup(io.inputs, io.outputs); // final group
   return modules;
+}
+
+// Collapses a large circuit into one node per module (via groupByModules),
+// keeping original INPUT/OUTPUT nodes individually visible so the existing
+// click-to-toggle / dependency-highlight interactions still work on them.
+export function buildModuleOverview(graph: LogicGraph, levels: Record<string, number>): OverviewGraph {
+  const modules = groupByModules(graph, levels);
+  const moduleId = (i: number) => `module_${i}`;
+
+  // Which module "exports" a given wire (a node id inside that module that's
+  // referenced from outside it) — used to resolve module-to-module edges.
+  const producerModule: Record<string, string> = {};
+  modules.forEach((m, i) => {
+    for (const outId of m.outputs) producerModule[outId] = moduleId(i);
+  });
+
+  const overview: OverviewGraph = {};
+
+  for (const node of Object.values(graph)) {
+    if (node.type === 'INPUT') {
+      overview[node.id] = { id: node.id, type: 'INPUT', inputs: [] };
+    }
+  }
+
+  modules.forEach((m, i) => {
+    const id = moduleId(i);
+    // Dedupe: multiple wires from the same producing module must collapse to
+    // a single edge, or the "${input}->${id}" edge id collides.
+    const resolvedInputs = [...new Set([...m.inputs].map(wire => producerModule[wire] ?? wire))];
+    overview[id] = {
+      id,
+      type: 'MODULE',
+      inputs: resolvedInputs,
+      internalNodeIds: m.nodes.map(n => n.id),
+      rawInputWires: [...m.inputs],
+      exportedWireIds: [...m.outputs],
+    };
+  });
+
+  for (const node of Object.values(graph)) {
+    if (node.type === 'OUTPUT') {
+      const producer = producerModule[node.inputs[0]] ?? node.inputs[0];
+      overview[node.id] = { id: node.id, type: 'OUTPUT', inputs: [producer] };
+    }
+  }
+
+  return overview;
+}
+
+// computeNodeLevelsFast puts every in-degree-0 node (every INPUT) at level 0
+// and every OUTPUT at the graph's max level — fine for a per-gate graph, but
+// in an overview graph that crams all of a large circuit's INPUT/OUTPUT nodes
+// onto two single, extremely wide rows regardless of which module actually
+// uses each one. Re-anchor each INPUT next to the earliest module that
+// consumes it, and each OUTPUT next to the module that produces it, so they
+// spread out across the module chain instead.
+export function assignOverviewLevels(overview: OverviewGraph): Record<string, number> {
+  const levels = computeNodeLevelsFast(overview);
+  const modules = Object.values(overview).filter(n => n.type === 'MODULE');
+
+  for (const node of Object.values(overview)) {
+    if (node.type === 'INPUT') {
+      const consumerLevels = modules.filter(m => m.inputs.includes(node.id)).map(m => levels[m.id]);
+      if (consumerLevels.length > 0) {
+        levels[node.id] = Math.max(0, Math.min(...consumerLevels) - 1);
+      }
+    }
+  }
+
+  for (const node of Object.values(overview)) {
+    if (node.type === 'OUTPUT') {
+      const producerId = node.inputs[0];
+      if (producerId in levels) {
+        levels[node.id] = levels[producerId] + 1;
+      }
+    }
+  }
+
+  return levels;
+}
+
+// "See what's inside a module": rebuilds a module's own gates as a small,
+// self-contained LogicGraph — its real internal nodes, plus synthetic INPUT
+// nodes for its boundary input wires and synthetic OUTPUT nodes (id
+// "<wire>_OUT", to avoid colliding with the internal gate that produces
+// "<wire>") for its exported wires.
+export function buildModulePreviewGraph(moduleNode: OverviewNode, fullGraph: LogicGraph): LogicGraph {
+  const preview: LogicGraph = {};
+
+  for (const gateId of moduleNode.internalNodeIds ?? []) {
+    preview[gateId] = fullGraph[gateId];
+  }
+
+  for (const wire of moduleNode.rawInputWires ?? []) {
+    if (!preview[wire]) {
+      preview[wire] = { id: wire, type: 'INPUT', inputs: [] };
+    }
+  }
+
+  for (const wire of moduleNode.exportedWireIds ?? []) {
+    const outId = `${wire}_OUT`;
+    preview[outId] = { id: outId, type: 'OUTPUT', inputs: [wire] };
+  }
+
+  return preview;
 }

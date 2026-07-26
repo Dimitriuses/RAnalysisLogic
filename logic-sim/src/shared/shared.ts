@@ -22,6 +22,25 @@ export interface SATResponce {
   solution: Record<string, boolean>[] | null;
 }
 
+export interface ModuleData {
+  id: string;
+  nodes: LogicGate[];
+  inputs: string[];
+  outputs: string[];
+}
+
+export interface TruthTableRow {
+  input: boolean[];
+  output: boolean[];
+}
+
+export interface TruthTableResponse {
+  moduleId: string;
+  inputs: string[];
+  outputs: string[];
+  table: TruthTableRow[];
+}
+
 export function convertGraphToCircuit(graph: LogicGraph): LogicCircuit {
   const inputs: string[] = Object.values(graph)
       .filter(node => node.type === 'INPUT')
@@ -57,4 +76,20 @@ export async function sendToSolver(circuit: LogicCircuit): Promise<SATResponce> 
   }
 
   return await response.json() as SATResponce;
+}
+
+export async function sendToTruthTable(module: ModuleData): Promise<TruthTableResponse> {
+  const response = await fetch("http://localhost:8000/truth-table", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(module)
+  });
+
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+
+  return await response.json() as TruthTableResponse;
 }

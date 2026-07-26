@@ -23,6 +23,20 @@
     </div>
     <select id="solutionSelector"></select>
     <div id="app"></div>
+    <div id="modulePreviewModal" class="modal-overlay hidden">
+      <div class="modal-box">
+        <div class="modal-header">
+          <span id="modulePreviewTitle"></span>
+          <button id="closeModulePreview">&times;</button>
+        </div>
+        <div class="modal-tabs">
+          <button id="previewTabGraph" class="modal-tab active">Graph</button>
+          <button id="previewTabTable" class="modal-tab">Truth Table</button>
+        </div>
+        <div id="modulePreviewContainer" class="modal-graph"></div>
+        <div id="modulePreviewTableContainer" class="modal-table hidden"></div>
+      </div>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

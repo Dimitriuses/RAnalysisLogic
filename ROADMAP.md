@@ -9,16 +9,32 @@ Priorities: **High** = portfolio impact, **Medium** = quality & credibility,
 
 ## Medium priority — quality & credibility
 
-- [ ] **Visualizer doesn't scale past small circuits.** `drawGraph`'s hierarchical
-  layout (`direction: 'UD'`) places nodes by topological depth via
-  `computeNodeLevelsFast`. For `64 Bit Adder.txt`, the ripple-carry chain is
-  ~250 levels deep, so it renders as a long, confusing vertical column, and
-  same-level `INPUT`/`OUTPUT` nodes aren't ordered by wire number, so they
-  don't visually group by which bit of A/B/sum they are. The default 4-bit
-  adder stays small enough to avoid this, so it's not blocking the demo, but
-  worth fixing before pointing anyone at a bigger circuit — e.g. sort
-  same-level nodes by wire number, or use a more compact/horizontal layout for
-  deep circuits.
+- [ ] **`sha256.txt` doesn't actually work end-to-end in the browser —
+  two separate bugs, both only found once someone actually tried it live.**
+  The README previously claimed it "loads and simulates"; that was never
+  verified against a real browser upload, only against `parseCircuitFile` in
+  isolation (`parser.test.ts`). It parses fine (~1s) and
+  `computeNodeLevelsFast` is fine too (~1s, maxLevel 5383), but:
+  - `groupByModules` didn't finish within 60s on the same graph in a
+    standalone timing test — never even got as far as rendering. Almost
+    certainly `countUniqueIO`'s `Object.values(graph).filter(...)` — a full
+    scan of the whole graph — running once per node processed, i.e. roughly
+    O(n²)-ish over 117k nodes. `MODULE_VIEW_MAX_NODES` (`main.ts`) currently
+    just avoids calling it above 5000 nodes rather than fixing it, so
+    `sha256.txt` falls back to the flat per-gate render instead of hanging.
+    Needs a reverse-dependency index built once up front instead of
+    rescanning the full graph per node.
+  - Separately, even with that guard, uploading `sha256.txt` live throws
+    `Maximum call stack size exceeded` and never finishes — `Output bits`
+    stays at its stale previous value and the canvas stays blank. Almost
+    certainly `simulateGraph`'s recursive `evaluate()` (`logic.ts`) blowing
+    the JS call stack, since maxLevel 5383 means a recursion depth in the
+    thousands for a single output. `findDependenciesForOutput` is built the
+    same recursive way and likely has the same problem. Fixing either the
+    module-overview performance or the visualizer alone won't make
+    `sha256.txt` usable — this simulation-side crash blocks it regardless of
+    rendering strategy, and would need an iterative (explicit-stack or
+    topologically-ordered) rewrite of the evaluation itself.
 
 ## Low priority — optional polish
 
@@ -197,3 +213,117 @@ future work:
   (Playwright against both dev servers) that typing a target directly —
   with no input clicked first — and clicking "Set Outputs" then "Solve (fix
   outputs)" returns real solutions from the live backend.
+- Fixed the visualizer not scaling past small circuits. A real per-gate render
+  of `64 Bit Adder.txt` (~190 levels) auto-zoomed to fit and collapsed into an
+  illegible mesh of crossing lines — sorting same-level nodes or tuning
+  spacing wouldn't have fixed that; the actual problem was 190 sequential
+  levels, not ordering or spacing. Added `buildModuleOverview` and
+  `assignOverviewLevels` (`tools.ts`) using the existing `groupByModules`:
+  circuits deeper than 30 levels (`MODULE_VIEW_LEVEL_THRESHOLD` in `main.ts`)
+  now render one box per module instead of one per gate, with original
+  `INPUT`/`OUTPUT` nodes still individually visible (and still fully
+  interactive — click-to-toggle and dependency highlighting both work
+  unchanged) so only the internal gate fan-out gets collapsed. The 64-bit
+  adder now renders as 21 clearly-labeled module boxes in a readable diagonal
+  chain instead of ~190 levels of noise. Two real bugs surfaced and got fixed
+  along the way, both confirmed via Playwright against the live dev server:
+  - A duplicate-edge-id crash (`Cannot add item: item with id
+    module_0->module_1 already exists`) whenever a module depended on
+    multiple wires produced by the same other module — fixed by deduping
+    resolved module-to-module inputs.
+  - `computeNodeLevelsFast` naturally puts every `INPUT` at level 0 and every
+    `OUTPUT` at the max level, which is fine per-gate but crams all of a large
+    circuit's 128 inputs onto one absurdly wide row in overview mode
+    (everything auto-zoomed down to a single-pixel-tall sliver). Fixed by
+    `assignOverviewLevels` re-anchoring each `INPUT`/`OUTPUT` next to the
+    module that actually consumes/produces it, spreading them across the
+    module chain instead.
+  - Also fixed a latent bug this touched: the file-upload handler's
+    `groupByModules(graph, levels)` diagnostic call used `levels` from
+    *before* `drawGraph` recomputed it for the newly-uploaded graph (stale
+    from whatever circuit was loaded previously), so it always logged
+    "Modules found: 0" for any upload. Reordered so it runs after `drawGraph`.
+  - Added a `MODULE_VIEW_MAX_NODES` (5000) safety cap after discovering
+    `groupByModules` doesn't finish within 60s on `sha256.txt` (117,014
+    nodes) — without it, uploading that file would call `groupByModules` and
+    hang the tab, which is worse than the old flat-but-illegible render.
+    Verified live: `sha256.txt` now falls back to flat rendering instead of
+    hanging (though it still doesn't work end-to-end — see the `sha256.txt`
+    item above, a separate `simulateGraph` crash blocks it regardless).
+- Extended the module overview with the two things it was missing for
+  actually tracing a signal: seeing what's inside a module, and not having
+  the "lit path" go dark at module boundaries. This also closes the loop on
+  why `groupByModules` existed in the first place — it was meant to enable
+  module-level truth tables for optimizing the Z3 side (per `/truth-table` +
+  `ModuleData`), never finished; this is the visual half of that idea.
+  - **Module summary coloring**: a module has no single boolean value, so
+    `updateColors` now summarizes it from its exported wires — green/red
+    only when every one of them agrees, otherwise a neutral color, rather
+    than guessing. Verified precisely via canvas pixel sampling (not just
+    eyeballing screenshots): an all-zero circuit correctly shows every module
+    red from the start (not neutral — all-false is itself an unambiguous
+    summary); setting all 128 inputs true correctly turns some modules green
+    and correctly leaves a module neutral where its exported wires
+    legitimately disagree in that scenario.
+  - **Dependency highlighting through modules**: clicking an `OUTPUT` now
+    expands the existing `findDependenciesForOutput` result to also include
+    any module whose internal gates intersect it, so the blue highlight
+    continues through module boxes instead of stopping at their edge.
+    Verified live: a deep/MSB-side output on the 64-bit adder (which
+    genuinely depends on the carry chain through nearly every module) lights
+    up all 20 modules and every input; a shallow output that depends on only
+    2 raw gates correctly lights up nothing else.
+  - **"What's inside" preview**: clicking a module opens a panel with its
+    real internal gates as their own small flat graph (`buildModulePreviewGraph`
+    in `tools.ts`), colored from the same simulation result as the main
+    view — not re-simulated, so it's a snapshot at click time.
+  - Building this surfaced two more real, previously-invisible bugs:
+    - `simulateGraph`'s `AND`/`OR`/`NAND`/`NOR` cases evaluated inputs via
+      `.every()`/`.some()` directly, which **short-circuit** — `.every()`
+      stops at the first `false`, `.some()` at the first `true` — silently
+      skipping (and never memoizing a value for) whichever inputs came
+      after. Invisible before now because every caller only ever looked up
+      `INPUT`/`OUTPUT` ids (always fully evaluated as recursion roots/leaves);
+      the module preview was the first thing to need *every* internal
+      gate's value. Fixed by mapping to an array first, forcing every input
+      to be evaluated, before reducing with `.every()`/`.some()`. Added
+      `logic.test.ts` as a regression test — confirmed it actually fails
+      against the old code (temporarily reverted `logic.ts` via `git stash`
+      to check) before confirming it passes against the fix.
+    - The preview modal's Network rendered nothing (blank canvas) despite
+      correct-looking data and positions — traced to a classic flexbox
+      feedback loop: `.modal-graph { flex: 1 }` had no `min-height: 0`, so it
+      fought with vis-network sizing its wrapper to the parent's height,
+      and the container never settled on a size (confirmed via Playwright:
+      `locator.screenshot()` timed out with "element is not stable" — its
+      height was still changing seconds after render). Fixed with
+      `min-height: 0`; also deferred the preview's `Network` construction to
+      `requestAnimationFrame` so it measures a settled layout even in
+      general, not just after this specific fix.
+- Follow-up polish on the module overview, from actually using it:
+  - **Highlighted edges are now visibly thicker** (`width: 3` vs the default
+    `1`), not just a different color — on an overview with lots of crossing
+    lines, blue-on-mixed-colors wasn't reading as clearly "highlighted" as a
+    bolder line does. Verified the underlying color logic was already
+    correct first (queried the live `DataSet` directly — all 223
+    module-connected edges and all 21 module nodes matched expectations
+    for both the dependency-highlight and value-summary cases, zero
+    mismatches) before concluding the actual gap was visual prominence, not
+    a color bug.
+  - **Module preview modal now matches the page's own light/dark theme**
+    instead of always being light, mirroring `:root`'s own
+    `prefers-color-scheme` pattern in `style.css`.
+  - **Added a Truth Table tab to the module preview** — the other half of
+    why `groupByModules` existed in the first place (per the original
+    plan: module truth tables feeding into Z3, never finished). Builds a
+    `ModuleData` payload from the open module's real gates and calls the
+    existing `/truth-table` endpoint, rendered as an HTML table with a
+    visual divider between input and output columns. Verified live: a
+    16-gate/9-input module correctly returns and renders all 512 (2⁹) rows.
+    Falls back to an inline message (not a blocking `alert`, since opening
+    a tab is passive) if the backend isn't reachable — same static-demo
+    caveat as the Solve buttons.
+  - The "which internal parts are currently powered" ask was already
+    covered by the preview's existing value-based coloring (confirmed
+    again with a mixed true/false scenario, not just all-same); no change
+    needed there.

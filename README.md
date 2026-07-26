@@ -20,7 +20,7 @@ The idea: represent a hash function as a plain boolean circuit (AND/OR/XOR/NOT/N
 
 - **`logic-sim/`** — TypeScript + Vite frontend.
   - Parses circuit files in the **Bristol circuit format** (a counts line, an `<input-wires> <party-2-wires> <output-wires>` line, then a gate list of `XOR`/`AND`/`INV`/… — the classic format from MPC/garbled-circuit research). See [Generating circuit files](#generating-circuit-files).
-  - Renders the circuit as an interactive graph ([vis-network](https://github.com/visjs/vis-network)): click an `INPUT` node to flip its bit and watch values propagate; click an `OUTPUT` node to highlight which inputs it actually depends on.
+  - Renders the circuit as an interactive graph ([vis-network](https://github.com/visjs/vis-network)): click an `INPUT` node to flip its bit and watch values propagate; click an `OUTPUT` node to highlight which inputs it actually depends on. Circuits deeper than 30 levels (e.g. `64 Bit Adder.txt`) render as a module overview instead — one box per module, with `INPUT`/`OUTPUT` nodes still individually visible and interactive — since a full per-gate render of something that deep collapses into an illegible mesh once the layout auto-zooms to fit. In overview mode, modules summarize their own state (green/red if every wire they export agrees, otherwise a neutral color) and join the dependency highlight — thicker and bolder, not just a different color — so the "lit path" doesn't go dark at module boundaries. Click a module to open a panel with two tabs: its actual internal gates (colored from the same live simulation) or its full truth table.
   - Simulates the circuit fully client-side.
   - Can group the circuit into smaller sub-modules for local truth-table inspection.
   - Sends a circuit to the backend solver with either the inputs or the outputs fixed, to search for satisfying assignments.
@@ -32,7 +32,7 @@ The idea: represent a hash function as a plain boolean circuit (AND/OR/XOR/NOT/N
 ## Sample circuits
 
 - `logic-sim/src/shared/64 Bit Adder.txt` — small, loads instantly, good for exercising the UI and the solver end-to-end.
-- `logic-sim/src/shared/sha256.txt` — the actual target: the SHA-256 compression function as a Bristol-format circuit (512-bit input, 256-bit digest out, ~116,246 gates), from the public Bristol circuit collection (see [Generating circuit files](#generating-circuit-files)). Loads and simulates, but is too large to render smoothly or to solve in full with the current solver.
+- `logic-sim/src/shared/sha256.txt` — the actual target: the SHA-256 compression function as a Bristol-format circuit (512-bit input, 256-bit digest out, ~116,246 gates), from the public Bristol circuit collection (see [Generating circuit files](#generating-circuit-files)). Parses correctly, but doesn't yet work end-to-end in the browser: it's too large for `groupByModules`, and separately its ~5,400-level depth crashes the client-side simulator with a stack overflow (see the ROADMAP). Too large to solve in full with the current solver either way.
 
 ## Live demo
 

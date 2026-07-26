@@ -151,3 +151,139 @@ button:focus-visible {
   position: relative;
   z-index: 10;
 }
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-overlay.hidden {
+  display: none;
+}
+
+.modal-box {
+  /* Same default (dark) as :root, overridden below to match its own light variant. */
+  background: #242424;
+  color: rgba(255, 255, 255, 0.87);
+  width: 80vw;
+  height: 80vh;
+  border-radius: 8px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75em 1em;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.modal-header button {
+  background: none;
+  border: none;
+  font-size: 1.5em;
+  cursor: pointer;
+  line-height: 1;
+  color: inherit;
+}
+
+@media (prefers-color-scheme: light) {
+  .modal-box {
+    background: #ffffff;
+    color: #213547;
+  }
+  .modal-header {
+    border-bottom: 1px solid #ddd;
+  }
+}
+
+.modal-graph {
+  flex: 1;
+  /* Without this, the default flex-item min-height:auto fights with
+     vis-network sizing its wrapper/canvas to 100% of this element, and the
+     two feed back into each other — the container never settles on a size
+     (observed via Playwright: "element is not stable", height still
+     changing seconds after render) and vis-network never gets a stable
+     size to draw into. */
+  min-height: 0;
+  position: relative;
+}
+
+.modal-graph.hidden {
+  display: none;
+}
+
+.modal-tabs {
+  display: flex;
+  gap: 0.5em;
+  padding: 0.5em 1em 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  flex-shrink: 0;
+}
+
+.modal-tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 0.4em 0.2em;
+  margin-bottom: -1px;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.7;
+  font: inherit;
+}
+
+.modal-tab.active {
+  opacity: 1;
+  border-bottom-color: #646cff;
+  font-weight: 600;
+}
+
+.modal-table {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 1em;
+}
+
+.modal-table.hidden {
+  display: none;
+}
+
+.truth-table {
+  border-collapse: collapse;
+  font-family: monospace;
+  font-size: 0.9em;
+}
+
+.truth-table th,
+.truth-table td {
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 0.25em 0.6em;
+  text-align: center;
+}
+
+.truth-table-output-start {
+  border-left: 2px solid #646cff;
+}
+
+@media (prefers-color-scheme: light) {
+  .modal-tabs {
+    border-bottom-color: #ddd;
+  }
+  .truth-table th,
+  .truth-table td {
+    border-color: #ddd;
+  }
+}

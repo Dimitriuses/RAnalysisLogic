@@ -19,12 +19,19 @@ export function simulateGraph(graph: LogicGraph, inputValues: Record<string, boo
         result = inputValues[id];
         break;
 
+      // Inputs are mapped to an array *before* every/some run over it, rather
+      // than passing evaluate directly to every/some — those short-circuit
+      // (every stops at the first false, some at the first true), which would
+      // skip evaluating — and memoizing into `values` — some inputs entirely.
+      // Fine for this gate's own result, but leaves callers that need every
+      // node's value (not just the ones each output happens to depend on,
+      // e.g. buildModulePreviewGraph) with silent gaps.
       case 'AND':
-        result = node.inputs.every(inputId => evaluate(inputId));
+        result = node.inputs.map(inputId => evaluate(inputId)).every(v => v);
         break;
 
       case 'OR':
-        result = node.inputs.some(inputId => evaluate(inputId));
+        result = node.inputs.map(inputId => evaluate(inputId)).some(v => v);
         break;
 
       case 'NOT':
@@ -37,11 +44,11 @@ export function simulateGraph(graph: LogicGraph, inputValues: Record<string, boo
         break;
 
       case 'NAND':
-        result = !node.inputs.every(inputId => evaluate(inputId));
+        result = !node.inputs.map(inputId => evaluate(inputId)).every(v => v);
         break;
 
       case 'NOR':
-        result = !node.inputs.some(inputId => evaluate(inputId));
+        result = !node.inputs.map(inputId => evaluate(inputId)).some(v => v);
         break;
 
       case 'OUTPUT':
