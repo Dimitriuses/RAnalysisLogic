@@ -7,35 +7,6 @@ legible and credible to a visitor, plus a few research directions.
 Priorities: **High** = portfolio impact, **Medium** = quality & credibility,
 **Low** = optional polish.
 
-## Medium priority — quality & credibility
-
-- [ ] **`sha256.txt` doesn't actually work end-to-end in the browser —
-  two separate bugs, both only found once someone actually tried it live.**
-  The README previously claimed it "loads and simulates"; that was never
-  verified against a real browser upload, only against `parseCircuitFile` in
-  isolation (`parser.test.ts`). It parses fine (~1s) and
-  `computeNodeLevelsFast` is fine too (~1s, maxLevel 5383), but:
-  - `groupByModules` didn't finish within 60s on the same graph in a
-    standalone timing test — never even got as far as rendering. Almost
-    certainly `countUniqueIO`'s `Object.values(graph).filter(...)` — a full
-    scan of the whole graph — running once per node processed, i.e. roughly
-    O(n²)-ish over 117k nodes. `MODULE_VIEW_MAX_NODES` (`main.ts`) currently
-    just avoids calling it above 5000 nodes rather than fixing it, so
-    `sha256.txt` falls back to the flat per-gate render instead of hanging.
-    Needs a reverse-dependency index built once up front instead of
-    rescanning the full graph per node.
-  - Separately, even with that guard, uploading `sha256.txt` live throws
-    `Maximum call stack size exceeded` and never finishes — `Output bits`
-    stays at its stale previous value and the canvas stays blank. Almost
-    certainly `simulateGraph`'s recursive `evaluate()` (`logic.ts`) blowing
-    the JS call stack, since maxLevel 5383 means a recursion depth in the
-    thousands for a single output. `findDependenciesForOutput` is built the
-    same recursive way and likely has the same problem. Fixing either the
-    module-overview performance or the visualizer alone won't make
-    `sha256.txt` usable — this simulation-side crash blocks it regardless of
-    rendering strategy, and would need an iterative (explicit-stack or
-    topologically-ordered) rewrite of the evaluation itself.
-
 ## Low priority — optional polish
 
 - [ ] **Remove `logic-sim/src/shared/logic-graph1.json`** (2 KB) if it's an unused
@@ -63,7 +34,16 @@ future work:
 - [ ] **Collision search** — the original goal: model two circuit instances sharing
   an output and ask Z3 for differing inputs.
 - [ ] **Scale rendering and solving** toward the full SHA-256 circuit (~116k gates),
-  which the current visualizer and brute-force solver don't handle.
+  which the current visualizer and brute-force solver don't handle. Now a
+  concrete, diagnosed blocker rather than a vague one (see the sha256.txt Done
+  entry below): even with the app's own logic fixed and fast, uploading
+  `sha256.txt` still throws `Maximum call stack size exceeded` from inside
+  vis-network's own hierarchical-layout `crawler` function, recursively
+  walking the ~117k-node flat render. Fixing this means either disabling
+  hierarchical layout above some node-count threshold (falling back to
+  physics/random positioning — legible-ness at this scale is a separate
+  problem from just not crashing) or a custom, non-recursive layout for
+  circuits this size.
 
 ## Done
 
@@ -413,3 +393,50 @@ future work:
     gray; the specific `module_10 -> module_11` case now renders as two
     distinct edges (`gate_161`, red; `gate_162`, green) instead of one
     ambiguous gray line.
+- Fixed the two `sha256.txt` bugs this roadmap had been carrying (previously
+  only diagnosed from a standalone timing test, never actually re-verified
+  live end-to-end until now):
+  - **`groupByModules` never finishing**: turned out to be *two* separate O(n)
+    full-graph scans, not one. `countUniqueIO`'s "outputs" side scanned
+    `Object.values(graph)` once per node processed; fixed with a `consumers`
+    reverse-dependency index built once up front. But the outer loop *also*
+    filtered `Object.values(graph)` down to "nodes at this level" once per
+    distinct level — over sha256.txt's 5383 levels that's a second, easily
+    missed O(n · levels) scan (~630M operations) that only showed up once the
+    first fix let the code actually reach it. Fixed by bucketing nodes by
+    level once (`nodesByLevel`) instead of re-filtering per level. Verified
+    via a standalone timing script against the real `sha256.txt` (117,014
+    nodes): parse 1.5s, levels 1.7s, `groupByModules` **2.1s** (down from
+    "didn't finish in 60s"), 24,042 modules found.
+  - **`simulateGraph`/`findDependenciesForOutput` stack overflow**: both used
+    native recursion (`evaluate()`, `collectDependencies()`), and sha256.txt's
+    maxLevel of 5383 means a recursion depth in the thousands for a single
+    output — well past what a JS call stack tolerates. Rewrote both as
+    iterative traversals using an explicit heap-allocated stack instead of the
+    native call stack (unbounded depth, limited only by memory). For
+    `simulateGraph`, each stack frame tracks how many of its own inputs have
+    already been pushed, preserving the existing guarantee (from the earlier
+    AND/OR short-circuit fix) that every input gets evaluated and memoized
+    before its dependent's result is computed. Verified: `simulateGraph`
+    completes in 571ms (116,996 of 117,014 nodes get a value — the 18 missing
+    are `NOT` gates with zero consumers, i.e. genuinely dead code in the
+    circuit file itself, confirmed by cross-checking a reverse-dependency
+    index; same 18 were always unreached under the old recursive code too,
+    so this isn't a regression). `findDependenciesForOutput` completes in
+    236ms for a deep output (115,720 dependencies). The existing
+    `logic.test.ts` regression test (every input evaluated even past a
+    would-be short-circuit) still passes against the rewrite.
+  - **A third, previously-indistinguishable crash surfaced once the first two
+    were fixed**: uploading `sha256.txt` live still throws
+    `Maximum call stack size exceeded` — but the full stack trace now points
+    into vis-network's own bundled code (`crawler`, inside its
+    hierarchical-layout module), not into anything in this project. All three
+    bugs shared the exact same generic error message, which is why they'd
+    looked like one bug until the first two were actually fixed and this one
+    was left standing on its own. This is the same problem the "Scale
+    rendering toward the full SHA-256 circuit" research item already named,
+    now with a concrete cause instead of a vague one — see that entry above.
+    `sha256.txt` still does not work end-to-end in the browser as a result,
+    but the two bugs actually named on this roadmap (`groupByModules`
+    performance, simulation-side recursion) are genuinely fixed and verified
+    independently of it.

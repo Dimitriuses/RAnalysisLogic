@@ -62,6 +62,17 @@ export function groupByModules(graph: LogicGraph, levels: Record<string, number>
   const modules: ModuleData[] = [];
   let currentGroup: LogicNode[] = [];
 
+  // Who consumes each node's output — built once so countUniqueIO's "outputs"
+  // side doesn't have to rescan the whole graph on every call. That rescan
+  // (once per node processed, i.e. roughly O(n) calls each doing an O(n) scan)
+  // is what made this never finish within 60s on sha256.txt's 117k nodes.
+  const consumers: Record<string, string[]> = {};
+  for (const node of Object.values(graph)) {
+    for (const input of node.inputs) {
+      (consumers[input] ??= []).push(node.id);
+    }
+  }
+
   function pushGroup(inputs: Set<string>, outputs: Set<string>) {
     if (currentGroup.length > 0) {
       const mdata: ModuleData = {
@@ -75,7 +86,7 @@ export function groupByModules(graph: LogicGraph, levels: Record<string, number>
     }
   };
 
-  function countUniqueIO(nodes: LogicNode[], graph: LogicGraph): {inputs: Set<string>, outputs: Set<string>} {
+  function countUniqueIO(nodes: LogicNode[]): {inputs: Set<string>, outputs: Set<string>} {
     const nodeIds = new Set(nodes.map(n => n.id));
 
     // 1) Inputs: all predecessors of the module's nodes that are NOT in the module itself
@@ -88,22 +99,29 @@ export function groupByModules(graph: LogicGraph, levels: Record<string, number>
     // 2) Outputs: all external nodes that take at least one module node as input,
     //    but we want the names of the module nodes feeding them (the module's output interface)
     const outputs = new Set<string>(
-      Object.values(graph)
-        .filter(v => !nodeIds.has(v.id))       // external nodes only
-        .flatMap(v => v.inputs                 // look at their inputs
-          .filter(i => nodeIds.has(i))         // pick the inputs that come from the module
-        )
+      nodes
+        .flatMap(n => consumers[n.id] ?? [])  // who consumes each module node
+        .filter(consumerId => !nodeIds.has(consumerId)) // external consumers only
     );
-    
+
     return { inputs, outputs };
   }
 
-  const levelKeys = [... new Set(Object.values(levels).map(Number).sort((a, b) => a - b))];
+  // Bucket nodes by level once — filtering Object.values(graph) by level on
+  // every iteration of the outer loop below was itself an O(n) scan done once
+  // per distinct level (sha256.txt: ~5400 levels), i.e. O(n * levels) overall
+  // on top of the per-node countUniqueIO cost fixed above.
+  const nodesByLevel: Record<number, LogicNode[]> = {};
+  for (const node of Object.values(graph)) {
+    if (node.type === "INPUT" || node.type === "OUTPUT") continue;
+    (nodesByLevel[levels[node.id]] ??= []).push(node);
+  }
+  const levelKeys = Object.keys(nodesByLevel).map(Number).sort((a, b) => a - b);
 
   for (const level of levelKeys) {
-    const nodes = Object.values(graph).filter(v => levels[v.id] == level && v.type != "INPUT" && v.type != "OUTPUT");
+    const nodes = nodesByLevel[level];
     for (const node of nodes) {
-      const io = countUniqueIO(currentGroup, graph)
+      const io = countUniqueIO(currentGroup)
       if (io.inputs.size <= maxModuleSize && io.outputs.size <= maxModuleSize) {
         currentGroup.push(node);
       } else {
@@ -113,7 +131,7 @@ export function groupByModules(graph: LogicGraph, levels: Record<string, number>
     }
   }
 
-  const io = countUniqueIO(currentGroup, graph)
+  const io = countUniqueIO(currentGroup)
   pushGroup(io.inputs, io.outputs); // final group
   return modules;
 }

@@ -32,7 +32,7 @@ The idea: represent a hash function as a plain boolean circuit (AND/OR/XOR/NOT/N
 ## Sample circuits
 
 - `logic-sim/src/shared/64 Bit Adder.txt` — small, loads instantly, good for exercising the UI and the solver end-to-end.
-- `logic-sim/src/shared/sha256.txt` — the actual target: the SHA-256 compression function as a Bristol-format circuit (512-bit input, 256-bit digest out, ~116,246 gates), from the public Bristol circuit collection (see [Generating circuit files](#generating-circuit-files)). Parses correctly, but doesn't yet work end-to-end in the browser: it's too large for `groupByModules`, and separately its ~5,400-level depth crashes the client-side simulator with a stack overflow (see the ROADMAP). Too large to solve in full with the current solver either way.
+- `logic-sim/src/shared/sha256.txt` — the actual target: the SHA-256 compression function as a Bristol-format circuit (512-bit input, 256-bit digest out, ~116,246 gates), from the public Bristol circuit collection (see [Generating circuit files](#generating-circuit-files)). Parses correctly, and both `groupByModules` and the client-side simulator now handle it (a few seconds each, no stack overflow — see the ROADMAP), but it still doesn't work end-to-end in the browser: uploading it crashes vis-network's own hierarchical-layout code trying to render ~117k nodes flat. Too large to solve in full with the current solver either way.
 
 ## Live demo
 

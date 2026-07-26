@@ -3,65 +3,83 @@ import type { LogicGraph, LogicNode } from './classes';
 export function simulateGraph(graph: LogicGraph, inputValues: Record<string, boolean>): Record<string, boolean> {
   const values: Record<string, boolean> = {};
 
-  // Helper for recursive evaluation
-  function evaluate(id: string): boolean {
-    if (id in values) return values[id];
+  // Evaluates `rootId` and everything it (transitively) depends on, using an
+  // explicit heap-allocated stack instead of native recursion — sha256.txt's
+  // ~5400-level depth blew the JS call stack ("Maximum call stack size
+  // exceeded") with a recursive evaluate(), well before hitting any V8-tunable
+  // limit worth relying on. Each frame tracks how many of its own inputs have
+  // already been pushed, so every input is still guaranteed to be evaluated
+  // (and memoized into `values`) before its dependent's result is computed —
+  // same guarantee the earlier every()/some()-short-circuit fix relied on.
+  function evaluate(rootId: string) {
+    const stack: { id: string; nextInput: number }[] = [{ id: rootId, nextInput: 0 }];
 
-    const node = graph[id];
-    if (!node) throw new Error(`Unknown node ID: ${id}`);
-    // console.log(`in ${id} have ${node.inputs[0]} and ${node.inputs[1]}`)
+    while (stack.length > 0) {
+      const frame = stack[stack.length - 1];
+      if (frame.id in values) {
+        stack.pop();
+        continue;
+      }
 
-    let result: boolean;
+      const node = graph[frame.id];
+      if (!node) throw new Error(`Unknown node ID: ${frame.id}`);
 
-    switch (node.type) {
-      case 'INPUT':
-        if (!(id in inputValues)) throw new Error(`Missing input value for ${id}`);
-        result = inputValues[id];
-        break;
+      if (node.type === 'INPUT') {
+        if (!(frame.id in inputValues)) throw new Error(`Missing input value for ${frame.id}`);
+        values[frame.id] = inputValues[frame.id];
+        stack.pop();
+        continue;
+      }
 
-      // Inputs are mapped to an array *before* every/some run over it, rather
-      // than passing evaluate directly to every/some — those short-circuit
-      // (every stops at the first false, some at the first true), which would
-      // skip evaluating — and memoizing into `values` — some inputs entirely.
-      // Fine for this gate's own result, but leaves callers that need every
-      // node's value (not just the ones each output happens to depend on,
-      // e.g. buildModulePreviewGraph) with silent gaps.
-      case 'AND':
-        result = node.inputs.map(inputId => evaluate(inputId)).every(v => v);
-        break;
+      if (frame.nextInput < node.inputs.length) {
+        const inputId = node.inputs[frame.nextInput++];
+        if (!(inputId in values)) stack.push({ id: inputId, nextInput: 0 });
+        continue;
+      }
 
-      case 'OR':
-        result = node.inputs.map(inputId => evaluate(inputId)).some(v => v);
-        break;
+      // Every input has been pushed (and is therefore memoized by now) —
+      // compute this node's own result.
+      const inputs = node.inputs;
+      let result: boolean;
 
-      case 'NOT':
-        if (node.inputs.length !== 1) throw new Error(`NOT gate ${id} must have exactly one input`);
-        result = !evaluate(node.inputs[0]);
-        break;
+      switch (node.type) {
+        case 'AND':
+          result = inputs.every(inputId => values[inputId]);
+          break;
 
-      case 'XOR':
-        result = node.inputs.reduce((acc, inputId) => acc !== evaluate(inputId), false);
-        break;
+        case 'OR':
+          result = inputs.some(inputId => values[inputId]);
+          break;
 
-      case 'NAND':
-        result = !node.inputs.map(inputId => evaluate(inputId)).every(v => v);
-        break;
+        case 'NOT':
+          if (inputs.length !== 1) throw new Error(`NOT gate ${frame.id} must have exactly one input`);
+          result = !values[inputs[0]];
+          break;
 
-      case 'NOR':
-        result = !node.inputs.map(inputId => evaluate(inputId)).some(v => v);
-        break;
+        case 'XOR':
+          result = inputs.reduce((acc, inputId) => acc !== values[inputId], false);
+          break;
 
-      case 'OUTPUT':
-        if (node.inputs.length !== 1) throw new Error(`OUTPUT node ${id} must have one input`);
-        result = evaluate(node.inputs[0]);
-        break;
+        case 'NAND':
+          result = !inputs.every(inputId => values[inputId]);
+          break;
 
-      default:
-        throw new Error(`Unsupported gate type: ${node.type}`);
+        case 'NOR':
+          result = !inputs.some(inputId => values[inputId]);
+          break;
+
+        case 'OUTPUT':
+          if (inputs.length !== 1) throw new Error(`OUTPUT node ${frame.id} must have one input`);
+          result = values[inputs[0]];
+          break;
+
+        default:
+          throw new Error(`Unsupported gate type: ${node.type}`);
+      }
+
+      values[frame.id] = result;
+      stack.pop();
     }
-
-    values[id] = result;
-    return result;
   }
 
   // Evaluate every OUTPUT node
@@ -75,30 +93,26 @@ export function simulateGraph(graph: LogicGraph, inputValues: Record<string, boo
 }
 
 
-// Main function: collect every dependency of an OUTPUT
+// Collect every (transitive) dependency of an OUTPUT, iteratively — an
+// explicit stack instead of recursion, for the same reason as simulateGraph's
+// evaluate(): sha256.txt's ~5400-level depth overflows the JS call stack.
 export function findDependenciesForOutput(
   graph: Record<string, LogicNode>,
   outputId: string
 ): Set<string> {
-  //const dependencies = new Set<string>();
   const visited = new Set<string>();
-  
-  // Recursive helper that collects dependencies
-  function collectDependencies(
-    nodeId: string,
-    // visited: Set<string>
-  ) {
-    if (visited.has(nodeId)) return;
+  const stack: string[] = [outputId];
+
+  while (stack.length > 0) {
+    const nodeId = stack.pop()!;
+    if (visited.has(nodeId)) continue;
     visited.add(nodeId);
-  
-    const node = graph[nodeId];
-    for (const inputId of node.inputs) {
-      collectDependencies(inputId);
+
+    for (const inputId of graph[nodeId].inputs) {
+      if (!visited.has(inputId)) stack.push(inputId);
     }
-    // console.log(visited)
   }
-  
-  collectDependencies(outputId);
+
   return visited;
 }
 
