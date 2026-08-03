@@ -2,26 +2,44 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + TS</title>
+    <meta name="description" content="Interactive boolean logic circuit visualizer, simulator and Z3-backed solver." />
+    <title>Logic circuit visualizer &amp; simulator</title>
   </head>
   <body>
-    <input type="file" id="fileInput" />
-    <div>
-      <label for="bitInput">Input bits:</label>
-      <input type="text" id="bitInput" size="80" />
-      <button id="applyInputs">Set Inputs</button>
-      <button id="downloadBtn">Download JSON</button>
+    <div id="toolbar">
+      <div class="toolbar-row">
+        <label for="sampleSelect">Circuit:</label>
+        <select id="sampleSelect">
+          <option value="adder4">4-bit adder (20 gates, per-gate view)</option>
+          <option value="adder64">64-bit adder (314 gates, module view)</option>
+        </select>
+        <span class="toolbar-sep">or load a Bristol-format file:</span>
+        <input type="file" id="fileInput" />
+      </div>
+      <div class="toolbar-row">
+        <label for="bitInput">Input bits:</label>
+        <input type="text" id="bitInput" size="80" />
+        <button id="applyInputs">Set Inputs</button>
+        <button id="downloadBtn">Download JSON</button>
+      </div>
+      <div class="toolbar-row">
+        <label for="bitOutput">Output bits:</label>
+        <input type="text" id="bitOutput" size="80" />
+        <button id="applyOutputs">Set Outputs</button>
+        <button id="solveBtn">Solve</button>
+        <button id="solveOutputsBtn">Solve (fix outputs)</button>
+        <select id="solutionSelector"></select>
+      </div>
+      <p id="hint">
+        Click an <strong>INPUT</strong> to flip its bit and watch values propagate
+        (<span class="swatch swatch-on"></span>1 / <span class="swatch swatch-off"></span>0) ·
+        click an <strong>OUTPUT</strong> to highlight everything it depends on
+        (<span class="swatch swatch-dep"></span>) ·
+        on the 64-bit adder, click a <strong>Module</strong> box to see the gates inside it.
+      </p>
     </div>
-    <div>
-      <label for="bitOutput">Output bits:</label>
-      <input type="text" id="bitOutput" size="80" />
-      <button id="applyOutputs">Set Outputs</button>
-      <button id="solveBtn">Solve</button>
-      <button id="solveOutputsBtn">Solve (fix outputs)</button>
-    </div>
-    <select id="solutionSelector"></select>
     <div id="app"></div>
     <div id="modulePreviewModal" class="modal-overlay hidden">
       <div class="modal-box">

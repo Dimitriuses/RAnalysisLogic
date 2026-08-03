@@ -32,8 +32,8 @@ describe('parseCircuitFile', () => {
     expect(countByType(graph, 'OUTPUT')).toBe(256);
   });
 
-  it('parses the Bristol Fashion 3-line header (64 Bit Adder.txt) to the declared gate count', () => {
-    const graph = loadGraph('64 Bit Adder.txt');
+  it('parses the Bristol Fashion 3-line header (64-bit-adder.txt) to the declared gate count', () => {
+    const graph = loadGraph('64-bit-adder.txt');
     expect(gateCount(graph)).toBe(314);
     expect(countByType(graph, 'INPUT')).toBe(128);
     expect(countByType(graph, 'OUTPUT')).toBe(64);
@@ -41,7 +41,7 @@ describe('parseCircuitFile', () => {
 
   it.each([
     ['sha256.txt'],
-    ['64 Bit Adder.txt'],
+    ['64-bit-adder.txt'],
   ])('every OUTPUT in %s resolves to a real producer node (no phantom inputs)', (filename) => {
     const graph = loadGraph(filename);
     const outputs = Object.values(graph).filter(n => n.type === 'OUTPUT');

@@ -4,12 +4,20 @@ import { DataSet } from 'vis-data';
 import type { LogicGraph, OverviewGraph, OverviewNode } from './classes.ts';
 import { applyBitString, findDependenciesForOutput, generateInputs, getInputs, getOutputs, simulateGraph } from './logic.ts';
 import { graph4bitAdder } from './graphs.ts';
-import { assignOverviewLevels, buildModuleOverview, buildModulePreviewGraph, computeNodeLevelsFast, groupByModules } from './tools.ts';
+import { assignOverviewLevels, buildModuleOverview, buildModulePreviewGraph, computeNodeLevelsFast } from './tools.ts';
 import { parseCircuitFile } from './shared/parser.ts';
 import { convertGraphToCircuit, sendToSolver, sendToTruthTable, type ModuleData, type TruthTableResponse } from './shared/shared.ts';
 
+// Bundled so the hosted demo can actually reach the module-overview code path.
+// The built-in graph4bitAdder is only ~9 levels deep — below
+// MODULE_VIEW_LEVEL_THRESHOLD — so on a static deploy, where a visitor has no
+// circuit file to upload, every module feature was previously unreachable.
+// 6.5 KB inlined; sha256.txt (3.1 MB) is deliberately not bundled, since it
+// still can't render (see KNOWNISSUES.md).
+import adder64Source from './shared/64-bit-adder.txt?raw';
 
 const fileInput = document.getElementById('fileInput') as HTMLInputElement;
+const sampleSelect = document.getElementById('sampleSelect') as HTMLSelectElement;
 
 let graph: LogicGraph;
 let inputValues: Record<string, boolean> = {};
@@ -19,6 +27,10 @@ const container = document.getElementById('app')!;
 let nodes: DataSet<Node> = new DataSet<Node>();
 let edges: DataSet<Edge> = new DataSet<Edge>();
 let levels: Record<string, number> = {};
+// The vis-network instance for the main view, kept so the smoke test can ask
+// where a node was actually drawn (getPositions/canvasToDOM) and click it for
+// real. Reassigned by every drawGraph call.
+let network: Network | null = null;
 
 // Circuits deeper than this render as a module overview instead of one node
 // per gate (see buildModuleOverview) — a real per-gate render of something
@@ -216,7 +228,7 @@ function drawGraph(graph: LogicGraph, inputValues: Record<string, boolean>) {
     }
   };
 
-  const network = new Network(container, { nodes, edges }, options); // 'vis-network'
+  network = new Network(container, { nodes, edges }, options); // 'vis-network'
   let relevantInputsPerOutput: Record<string, Set<string>> = {};
 
   network.on('click', function (params) {
@@ -259,6 +271,24 @@ function drawGraph(graph: LogicGraph, inputValues: Record<string, boolean>) {
   updateColors(filterToRendered(result), nodes, edges, undefined, result);
   updateValues(result);
 }
+
+// Test hook. tools/smoke.mjs asserts on the graph the app actually rendered
+// (node/edge counts, module ids, live bit values) instead of inferring it from
+// canvas pixels — vis-network draws to a canvas, so there is no DOM to query.
+// Getters rather than a snapshot: an INPUT toggle updates values in place
+// without re-running drawGraph, so a captured object would go stale.
+Object.defineProperty(window, '__logicSim', {
+  value: {
+    get nodes() { return nodes; },
+    get edges() { return edges; },
+    get graph() { return graph; },
+    get inputValues() { return inputValues; },
+    get outputValues() { return outputValues; },
+    get renderedIds() { return renderedIds; },
+    get moduleInternalIds() { return moduleInternalIds; },
+    get network() { return network; },
+  },
+});
 
 function updateValues(result: Record<string, boolean>){
   outputValues = getOutputs(graph, result);
@@ -467,26 +497,39 @@ function showModulePreview(moduleNode: OverviewNode, fullGraph: LogicGraph, full
   });
 }
 
-inputValues = generateInputs(graph4bitAdder)
-graph = graph4bitAdder
+// Swap in a new circuit: reset its inputs to all-zero, redraw, and refresh the
+// bit displays. Shared by the sample selector and the file picker so both take
+// exactly the same path.
+function applyGraph(newGraph: LogicGraph) {
+  graph = newGraph;
+  inputValues = generateInputs(graph);
+  updateBitInputDisplay(inputValues);
+  drawGraph(graph, inputValues);
+}
 
-drawGraph(graph, inputValues);
+const SAMPLES: Record<string, () => LogicGraph> = {
+  adder4: () => graph4bitAdder,
+  adder64: () => parseCircuitFile(adder64Source),
+};
+
+applyGraph(SAMPLES.adder4());
+
+sampleSelect.addEventListener('change', () => {
+  const build = SAMPLES[sampleSelect.value];
+  if (!build) return;
+  // Parsing the 64-bit adder plus its module grouping takes a beat; clear the
+  // file picker so the two circuit sources can't visually disagree about
+  // what's currently loaded.
+  fileInput.value = '';
+  applyGraph(build());
+});
 
 fileInput.addEventListener('change', async (e) => {
   const file = (e.target as HTMLInputElement).files?.[0];
   if (!file) return;
 
   const text = await file.text();
-  graph = parseCircuitFile(text);
-  inputValues = generateInputs(graph)
-
-  updateBitInputDisplay(inputValues);
-  drawGraph(graph, inputValues);
-
-  // drawGraph() has just recomputed `levels` for this graph; groupByModules()
-  // needs the fresh version, not whatever the previously-loaded graph left behind.
-  const components = groupByModules(graph, levels);
-  console.log("Modules found:", components.length);
+  applyGraph(parseCircuitFile(text));
 });
 
 // Wire IDs are named "IN_<wire>" / "OUT_<wire>"; ascending wire number is the
@@ -551,8 +594,15 @@ document.getElementById('solveBtn')!.addEventListener('click', () => {
 
   const circuit = convertGraphToCircuit(graph)
   circuit.fixed_inputs = inputValues;
+  // Fixed inputs admit exactly one assignment, so leave find_all_solutions at
+  // its default and render that answer. This used to only console.log(data),
+  // i.e. the button appeared to do nothing at all when the backend was up.
   sendToSolver(circuit).then(data => {
-    console.log(data)
+    if (data.status === "unsat" || !data.solution?.length) {
+      alert("No solution exists for these fixed inputs.");
+      return;
+    }
+    displaySolution(data.solution[0]);
   }).catch(showSolverUnavailableNotice)
 
 })

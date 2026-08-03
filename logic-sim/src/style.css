@@ -28,52 +28,65 @@ html, body {
   height: 100%;
 }
 
-#network {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+/* The toolbar and the canvas are laid out as flex siblings rather than the
+   canvas being absolutely positioned underneath the toolbar. The old layout
+   put #app at a hardcoded `top` offset because, at top:0, the canvas covered
+   the same region as the toolbar — the controls sat above it only visually
+   (z-index), so the canvas still received clicks anywhere a control didn't
+   cover, silently eating clicks on the topmost row of nodes. A flex column
+   makes the two genuinely non-overlapping, so there is no offset to keep in
+   sync with the toolbar's height when a row is added. */
+body {
+  display: flex;
+  flex-direction: column;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+#toolbar {
+  flex: 0 0 auto;
+  padding: 0.5em 0.75em;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4em;
 }
+
+.toolbar-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  flex-wrap: wrap;
+}
+
+.toolbar-sep {
+  opacity: 0.7;
+}
+
+#hint {
+  margin: 0;
+  font-size: 0.85em;
+  opacity: 0.75;
+}
+
+.swatch {
+  display: inline-block;
+  width: 0.75em;
+  height: 0.75em;
+  border-radius: 2px;
+  vertical-align: baseline;
+  border: 1px solid rgba(128, 128, 128, 0.5);
+}
+
+/* Match the node colors used by updateColors() in main.ts. */
+.swatch-on { background: #a0f0a0; }
+.swatch-off { background: #f0a0a0; }
+.swatch-dep { background: #7779ff; }
 
 #app {
-  position: absolute;
-  /* Below the toolbar, not underneath it — #app is absolutely positioned, so
-     top:0 would place the canvas overlapping the same region as the toolbar
-     (which sits above it only visually, via z-index; the canvas underneath
-     still receives clicks anywhere a control doesn't cover). That silently
-     ate clicks on the topmost row of nodes in the module overview, since
-     several inputs render directly behind the "Set Outputs"/"Solve" buttons. */
-  top: 132px;
-  left: 0;
-  right: 0;
-  bottom: 0;
-}
-
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.vanilla:hover {
-  filter: drop-shadow(0 0 2em #3178c6aa);
-}
-
-.card {
-  padding: 2em;
-}
-
-.read-the-docs {
-  color: #888;
+  flex: 1 1 auto;
+  /* vis-network sizes its canvas to this element; as a flex item it needs an
+     explicit min-height:0 or the default `auto` lets the canvas' own height
+     drive the container instead (the same feedback loop documented on
+     .modal-graph below). */
+  min-height: 0;
 }
 
 button {
@@ -108,50 +121,10 @@ button:focus-visible {
   }
 }
 
-#fileInput {
-  position: relative;
-  z-index: 10;
-}
-
-#bitInput {
-  position: relative;
-  z-index: 10;
-}
-
-#bitOutput {
-  position: relative;
-  z-index: 10;
-}
-
-#applyInputs {
-  position: relative;
-  z-index: 10;
-}
-
-#downloadBtn {
-  position: relative;
-  z-index: 10;
-}
-
-#applyOutputs {
-  position: relative;
-  z-index: 10;
-}
-
-#solveBtn {
-  position: relative;
-  z-index: 10;
-}
-
-#solveOutputsBtn {
-  position: relative;
-  z-index: 10;
-}
-
-#solutionSelector {
-  position: relative;
-  z-index: 10;
-}
+/* The nine per-control `position: relative; z-index: 10` rules that used to
+   live here are gone: they existed only to lift each control above the
+   absolutely-positioned canvas that overlapped them. #toolbar and #app are now
+   flex siblings that never overlap, so stacking order is irrelevant. */
 
 .modal-overlay {
   position: fixed;

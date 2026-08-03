@@ -1,95 +1,181 @@
 # RAnalysisLogic
 
+An interactive **boolean logic circuit visualizer, simulator and SAT-based
+solver** — built toward analyzing SHA-256 as a plain gate circuit.
+
 [![CI](https://github.com/Dimitriuses/RAnalysisLogic/actions/workflows/ci.yml/badge.svg)](https://github.com/Dimitriuses/RAnalysisLogic/actions/workflows/ci.yml)
+[![Deploy demo](https://github.com/Dimitriuses/RAnalysisLogic/actions/workflows/deploy-pages.yml/badge.svg)](https://github.com/Dimitriuses/RAnalysisLogic/actions/workflows/deploy-pages.yml)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178c6)](https://www.typescriptlang.org/)
+[![Python](https://img.shields.io/badge/Python-3.10%2B-3776ab)](https://www.python.org/)
+[![Z3](https://img.shields.io/badge/solver-Z3-8a2be2)](https://github.com/Z3Prover/z3)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![status: active](https://img.shields.io/badge/status-active-brightgreen.svg)](ROADMAP.md)
 
-A boolean logic circuit visualizer, simulator, and SAT-based solver, built with the long-term goal of analyzing **SHA-256** as a boolean circuit and exploring a **collision attack** against it.
+## ▶ [Try the live demo](https://dimitriuses.github.io/RAnalysisLogic/)
 
-> **Status: unfinished / experimental.** The circuit visualizer and simulator work well on arbitrary circuits. The SAT-solving backend works on small-to-medium circuits. The original goal — using it to actually find SHA-256 collisions — is not implemented; the full SHA-256 circuit is far too large (116k+ gates) for the current brute-force solving approach to handle.
+Pick a circuit from the **Circuit** dropdown — the 4-bit adder renders per gate,
+the 64-bit adder is deep enough to render as a module overview. Click an
+`INPUT` to flip its bit, an `OUTPUT` to highlight everything it depends on, or a
+`Module` box to look inside it. The solver buttons need the Python backend, which
+isn't running on a static deploy — see [Live demo](#live-demo).
 
-| Circuit graph | `INPUT` toggle → propagation | `OUTPUT` dependency highlight |
+| Circuit graph | `OUTPUT` dependency highlight | Module overview (64-bit adder) |
 | --- | --- | --- |
-| ![Circuit graph](screenshots/circuit-graph.png) | ![Input toggle](screenshots/input-toggle.png) | ![Output dependency highlight](screenshots/output-dependencies.png) |
+| ![Circuit graph](screenshots/circuit-graph.png) | ![Output dependency highlight](screenshots/output-dependencies.png) | ![Module overview](screenshots/module-overview.png) |
 
-**[Try the live demo](https://dimitriuses.github.io/RAnalysisLogic/)** (see [Live demo](#live-demo) below for what does/doesn't work there).
+<p align="center">
+  <img src="screenshots/module-preview.png" alt="Module preview panel showing a module's internal gates" width="720">
+  <br><em>Clicking a module opens its real internal gates, coloured from the same live simulation — or its full truth table.</em>
+</p>
 
 ## What this is
 
-The idea: represent a hash function as a plain boolean circuit (AND/OR/XOR/NOT/NAND/NOR gates), then use a SAT solver to ask questions like "which inputs produce this output?" or "do two different inputs produce the same output?" (a collision). This repo is the tooling built toward that goal — a circuit loader/visualizer/simulator on the frontend, and a Z3-backed solver on the backend — exercised so far on a 64-bit adder and on a full SHA-256 circuit.
+Represent a hash function as a plain boolean circuit (AND/OR/XOR/NOT/NAND/NOR),
+then use a SAT solver to ask questions like *"which inputs produce this
+output?"* or *"do two different inputs collide?"*. This repo is the tooling
+built toward that goal: a circuit loader/visualizer/simulator in the browser,
+and a Z3-backed solver behind an HTTP API.
 
-## Structure
+The visualizer and simulator work well on arbitrary circuits. The solver works
+on small-to-medium ones. **Collision search itself is not implemented** — the
+full SHA-256 circuit (116,246 gates) is far beyond what the current approach
+handles, and [`KNOWNISSUES.md`](KNOWNISSUES.md) says exactly where it stops and
+why.
 
-- **`logic-sim/`** — TypeScript + Vite frontend.
-  - Parses circuit files in the **Bristol circuit format** (a counts line, an `<input-wires> <party-2-wires> <output-wires>` line, then a gate list of `XOR`/`AND`/`INV`/… — the classic format from MPC/garbled-circuit research). See [Generating circuit files](#generating-circuit-files).
-  - Renders the circuit as an interactive graph ([vis-network](https://github.com/visjs/vis-network)): click an `INPUT` node to flip its bit and watch values propagate; click an `OUTPUT` node to highlight which inputs it actually depends on. Circuits deeper than 30 levels (e.g. `64 Bit Adder.txt`) render as a module overview instead — one box per module, with `INPUT`/`OUTPUT` nodes still individually visible and interactive — since a full per-gate render of something that deep collapses into an illegible mesh once the layout auto-zooms to fit. In overview mode, modules summarize their own state (green/red if every wire they export agrees, otherwise a neutral color) and join the dependency highlight — thicker and bolder, not just a different color — so the "lit path" doesn't go dark at module boundaries. Click a module to open a panel with two tabs: its actual internal gates (colored from the same live simulation) or its full truth table.
-  - Simulates the circuit fully client-side.
-  - Can group the circuit into smaller sub-modules for local truth-table inspection.
-  - Sends a circuit to the backend solver with either the inputs or the outputs fixed, to search for satisfying assignments.
-- **`PyZ3Server/`** — FastAPI + [Z3](https://github.com/Z3Prover/z3) backend.
-  - Converts a circuit into Z3 boolean formulas.
-  - `POST /solve` — given fixed inputs and/or fixed outputs, returns one satisfying model by default (fast; safe for large circuits), or up to 1000 distinct models if `find_all_solutions: true` is set.
-  - `POST /truth-table` — brute-force truth table for a small circuit module.
+### Features
+
+- **Bristol-format parser** that auto-detects both header layouts — Bristol
+  Fashion (3 lines) and the older Bristol format (2 lines) used by the
+  reference SHA-256 circuit.
+- **Interactive graph** (via [vis-network](https://github.com/visjs/vis-network)):
+  click an `INPUT` to flip its bit and watch values propagate; click an `OUTPUT`
+  to highlight the exact cone of gates and inputs it depends on.
+- **Module overview** for deep circuits. A per-gate render of something ~190
+  levels deep collapses into an illegible mesh, so circuits past a depth
+  threshold render one box per module — with `INPUT`/`OUTPUT` nodes still
+  individually visible and interactive. Modules summarize their own state, join
+  the dependency highlight, and open a panel showing either their real internal
+  gates or their full truth table.
+- **Client-side simulation** with no recursion, so circuit depth is bounded by
+  memory rather than the JS call stack.
+- **Z3 solver** that answers with one satisfying assignment by default, or
+  enumerates up to 1000 distinct ones on request.
+
+## Layout
+
+```
+logic-sim/     TypeScript + Vite frontend (no framework)
+  src/shared/parser.ts   Bristol circuit text -> LogicGraph
+  src/logic.ts           simulation, dependency tracing, bit-string I/O
+  src/tools.ts           levelling, module grouping, overview/preview building
+  src/main.ts            DOM wiring, vis-network rendering and colouring
+  tools/                 smoke test + screenshot capture (Playwright)
+PyZ3Server/    FastAPI + Z3 backend
+  parser.py              LogicCircuit -> Z3 variables and constraints
+  solver.py              one model, or up to MAX_MODELS distinct ones
+  server.py              POST /solve, POST /truth-table
+screenshots/   generated by `npm run screenshots`
+```
+
+The central structure is `LogicGraph` — a map of node id to node, where a node's
+`inputs` are **other node ids**, not wire numbers. The parser resolves wire
+numbers to producer nodes once; everything downstream works in node-id space.
+See [`CLAUDE.md`](CLAUDE.md) for the invariants that matter when changing it.
+
+### API
+
+- `POST /solve` — given fixed inputs and/or fixed outputs, returns one
+  satisfying model by default, or up to 1000 distinct models with
+  `"find_all_solutions": true`.
+- `POST /truth-table` — brute-force truth table for a small circuit module.
 
 ## Sample circuits
 
-- `logic-sim/src/shared/64 Bit Adder.txt` — small, loads instantly, good for exercising the UI and the solver end-to-end.
-- `logic-sim/src/shared/sha256.txt` — the actual target: the SHA-256 compression function as a Bristol-format circuit (512-bit input, 256-bit digest out, ~116,246 gates), from the public Bristol circuit collection (see [Generating circuit files](#generating-circuit-files)). Parses correctly, and both `groupByModules` and the client-side simulator now handle it (a few seconds each, no stack overflow — see the ROADMAP), but it still doesn't work end-to-end in the browser: uploading it crashes vis-network's own hierarchical-layout code trying to render ~117k nodes flat. Too large to solve in full with the current solver either way.
+- `logic-sim/src/shared/64-bit-adder.txt` — 314 gates. Loads instantly, deep
+  enough to exercise module view, and small enough to solve end-to-end. Bundled
+  into the demo.
+- `logic-sim/src/shared/sha256.txt` — the actual target: the SHA-256 compression
+  function (512-bit input, 256-bit digest, ~116,246 gates). Parses correctly and
+  both the module grouping and the simulator handle it in seconds, but it still
+  cannot be rendered — see [`KNOWNISSUES.md`](KNOWNISSUES.md#1-sha256txt-cannot-be-rendered).
+
+Both come from the public Bristol circuit collection; provenance and hashes are
+in [`NOTICE.md`](NOTICE.md), and [Generating circuit files](#generating-circuit-files)
+explains how to get more.
 
 ## Live demo
 
-[dimitriuses.github.io/RAnalysisLogic](https://dimitriuses.github.io/RAnalysisLogic/) —
-the visualizer/simulator, loaded with the 64-bit adder, deployed via GitHub Pages
-(see `.github/workflows/deploy-pages.yml`). It's a static build of `logic-sim`
-only: **Solve** / **Solve (fix outputs)** call the PyZ3Server backend, which
-isn't running there, so clicking them shows a disclaimer instead of a result.
-Run the backend locally (below) to try the real Z3-based solver.
+[dimitriuses.github.io/RAnalysisLogic](https://dimitriuses.github.io/RAnalysisLogic/)
+— the visualizer and simulator, deployed from `logic-sim` via GitHub Pages
+(`.github/workflows/deploy-pages.yml`). It is a **static** build: **Solve**,
+**Solve (fix outputs)** and a module's **Truth Table** tab all call PyZ3Server,
+which isn't running there, so they show a plain-language disclaimer instead of a
+result. Everything else — parsing, simulation, propagation, dependency
+highlighting, module overview and the module graph preview — runs entirely in
+the browser and works on the hosted demo.
+
+Run the backend locally (below) to use the real Z3 solver.
 
 ## Running it
 
 **Frontend**
+
 ```bash
 cd logic-sim
-npm install
+npm ci
 npm run dev
 ```
-Opens on `http://localhost:5173`. Upload a circuit file with the file picker, or use the hardcoded 4-bit adder that loads by default.
 
-Tests ([Vitest](https://vitest.dev/)): `npm run test` (from `logic-sim/`).
+Opens on `http://localhost:5173`. Pick a circuit from the dropdown or upload
+your own Bristol-format file.
 
-**Backend** — run from the **repository root**, not from inside `PyZ3Server/`. The
-server uses package imports (`from PyZ3Server.classes import …`), so uvicorn must
-see `PyZ3Server` as a package on the path:
+**Backend** — run from the **repository root**, not from inside `PyZ3Server/`.
+The server imports `PyZ3Server.*` as a package, so uvicorn must see it on the
+path:
+
 ```bash
 python -m venv .venv
 .venv\Scripts\activate          # Windows  (macOS/Linux: source .venv/bin/activate)
 pip install -r PyZ3Server/requirements.txt
 uvicorn PyZ3Server.server:app --reload
 ```
-Runs on `http://localhost:8000`. CORS is currently only configured for `http://localhost:5173`.
 
-Tests ([pytest](https://pytest.org/)) and lint ([ruff](https://docs.astral.sh/ruff/),
-pyflakes rules only — see `PyZ3Server/pyproject.toml`): from the **repository
-root** (same package-path reason as above),
+Runs on `http://localhost:8000`. CORS is configured for `http://localhost:5173`
+only, so use `npm run dev` (not a preview build) when you want the solver.
+
+## Tests
+
 ```bash
+# Frontend — from logic-sim/
+npx tsc --noEmit       # the dev server does NOT typecheck
+npm run test           # Vitest unit tests
+
+# End-to-end, against the production build
+npm run build
+npx vite preview --port 4173 --strictPort &
+npm run smoke          # drives a real browser: loads both circuits, toggles
+                       # inputs, opens a module preview, asserts no errors
+
+# Backend — from the repository root
 pip install -r PyZ3Server/requirements-dev.txt
-python -m pytest PyZ3Server
 ruff check PyZ3Server
+python -m pytest PyZ3Server
 ```
+
+CI runs the unit tests and build on **Ubuntu and Windows**, the backend suite on
+**Python 3.10 and 3.13**, and the browser smoke test on every push.
 
 ## Generating circuit files
 
-There are two kinds of circuit file, and neither large one needs to be committed —
-both are reproducible from the instructions below.
+Large circuit files don't need to live in git — they're reproducible.
 
-**1. Source circuits (`*.txt`, Bristol format)** — the inputs the app parses.
-`sha256.txt` is taken from the public **Bristol circuit collection** (originally the
-University of Bristol; now maintained by N. Smart's group at KU Leuven), which
-distributes SHA-256, SHA-512, AES-128 and other functions in exactly this format:
+**Source circuits (`*.txt`, Bristol format).** The public Bristol circuit
+collection (originally University of Bristol, now maintained by N. Smart's group
+at KU Leuven) distributes SHA-256, SHA-512, AES-128 and others in this format:
 
-- <https://homes.esat.kuleuven.be/~nsmart/MPC/> — see the older "Bristol format"
-  list for the `XOR`/`AND`/`INV` circuits this parser reads.
+- <https://homes.esat.kuleuven.be/~nsmart/MPC/>
 
-To analyze a new function, download its `.txt` from that collection (or synthesize
-your own to the same layout) and open it with the file picker. The parser expects:
+Download a `.txt` and open it with the file picker. The parser expects:
 
 ```
 <num_gates> <num_wires>
@@ -97,21 +183,29 @@ your own to the same layout) and open it with the file picker. The parser expect
 <n_in> <n_out> <in_wire...> <out_wire...> <TYPE>   # one line per gate
 ```
 
-`<TYPE>` is one of `XOR`, `AND`, `INV`, `OR`, `NAND`, `NOR` (`INV` maps to `NOT`).
-These files are large and third-party, so prefer **downloading** them over committing
-them — keeping only a small in-repo sample like `64 Bit Adder.txt`.
+`<TYPE>` is one of `XOR`, `AND`, `INV`, `OR`, `NAND`, `NOR` (`INV` maps to
+`NOT`).
 
-**2. Parsed graph (`logic-graph*.json`)** — the app's own internal representation,
-derived from a `.txt`. It is fully regenerable, so it is intentionally not committed.
-To (re)create it:
+**Parsed graph (`logic-graph*.json`).** The app's own internal representation,
+fully regenerable and deliberately not committed: load a circuit and click
+**Download JSON**.
 
-1. Start the frontend (`npm run dev`) and open the app.
-2. Load a Bristol-format `.txt` with the file picker.
-3. Click **Download** — the app serializes the parsed graph (`{ inputs, outputs, gates }`)
-   to JSON and saves it.
+## Roadmap and known limitations
 
-## Known limitations
+- [`ROADMAP.md`](ROADMAP.md) — what's planned, what's researched-but-hard, and a
+  detailed log of what's already been fixed.
+- [`KNOWNISSUES.md`](KNOWNISSUES.md) — measured, reproducible defects and limits.
 
-- `/solve` enumerates models by repeatedly asking Z3 for a satisfying assignment and then blocking it, capped at 1000 — it does not scale to a 116k-gate circuit.
-- There's no collision-search logic yet (e.g. modeling two circuit instances sharing an output and asking Z3 for differing inputs) — that's the natural next step toward the original goal.
-- `/truth-table` is brute-force (`2^n` input combinations) and only practical for small modules.
+The short version: SHA-256 renders nowhere near acceptably (a stack overflow
+inside vis-network's own layout code), the solver doesn't scale to 116k gates,
+`/truth-table` is unguarded `2^n` brute force, and the backend is a localhost
+tool with no auth or TLS. Collision search — the original point — is still
+unimplemented.
+
+## Licence and attribution
+
+This project's own source is MIT-licensed — see [`LICENSE`](LICENSE).
+
+The sample circuit files are third-party research artifacts redistributed here
+as parser input; their origin, sizes and SHA-256 hashes, along with the licences
+of every bundled dependency, are recorded in [`NOTICE.md`](NOTICE.md).

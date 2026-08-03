@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- An AND gate with two inputs and one output. -->
+  <rect width="64" height="64" rx="10" fill="#1f2937"/>
+  <g stroke="#7dd3fc" stroke-width="4" fill="none" stroke-linecap="round">
+    <path d="M10 20h10M10 44h10"/>
+    <path d="M44 32h10"/>
+    <path d="M20 12v40h8a20 20 0 0 0 0-40z" fill="#0ea5e9" stroke="#7dd3fc"/>
+  </g>
+</svg>

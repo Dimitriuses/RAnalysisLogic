@@ -43,6 +43,18 @@ def convert_to_z3(
             if b is None:
                 raise ValueError(f"OR gate {gate.id} missing second input")
             constraints.append(out == Or(a, b))
+        # NAND/NOR complete the set the frontend already accepts: parser.ts maps
+        # both from Bristol files and simulateGraph evaluates both, so without
+        # them a circuit that loads, renders and simulates fine in the browser
+        # made /solve raise ValueError -> HTTP 500 the moment you pressed Solve.
+        elif gate.type == "NAND":
+            if b is None:
+                raise ValueError(f"NAND gate {gate.id} missing second input")
+            constraints.append(out == Not(And(a, b)))
+        elif gate.type == "NOR":
+            if b is None:
+                raise ValueError(f"NOR gate {gate.id} missing second input")
+            constraints.append(out == Not(Or(a, b)))
         elif gate.type == "NOT":
             constraints.append(out == Not(a))
         elif gate.type == "OUTPUT":

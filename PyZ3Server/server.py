@@ -1,8 +1,6 @@
 from itertools import product
 
-# & "C:\Program Files\Python310\python.exe" -m uvicorn PyZ3Server.server:app --reload
-# sys.path.append(os.path.dirname(__file__))  # add the current folder to the path
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from PyZ3Server.classes import LogicCircuit, ModuleData
 from PyZ3Server.parser import convert_to_z3
@@ -22,21 +20,7 @@ app.add_middleware(
     allow_headers=["*"],  # allow any headers
 )
 
-# print(dir(z3))
 
-@app.post("/simulate")
-def simulate_logic(circuit: LogicCircuit):
-    # print(circuit)
-    try:
-        # TODO: parse into Z3 / SMT here
-        return {
-            "message": "Accepted",
-            "gates_count": len(circuit.gates),
-            "data": convert_to_z3(circuit)
-        }
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    
 @app.post("/solve")
 def solve_logic_circuit(circuit: LogicCircuit):
     variables, constraints = convert_to_z3(circuit)

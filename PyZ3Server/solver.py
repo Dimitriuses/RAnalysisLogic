@@ -1,5 +1,10 @@
-from tqdm import tqdm
 from z3 import BoolRef, Or, Solver, sat
+
+# How many distinct models solve_all will enumerate before giving up. The
+# blocking-clause loop below is linear in this, and each iteration is a full
+# solver call, so this is the knob that keeps a large circuit from hanging a
+# request rather than a limit anyone has hit deliberately.
+MAX_MODELS = 1000
 
 
 def solve_circuit(variables: dict[str, BoolRef], constraints: list[BoolRef]):
@@ -19,14 +24,15 @@ def solve_all(variables: dict[str, BoolRef], constraints: list[BoolRef]):
     solver = Solver()
     solver.add(constraints)
     models = get_all_models(solver, variables)
-    out = []
-    for model in tqdm(models):
-        out.append({str(var): bool(model[var]) if model[var] is not None else None for var in variables.values()})
+    out = [
+        {str(var): bool(model[var]) if model[var] is not None else None for var in variables.values()}
+        for model in models
+    ]
     return out if out else None
 
 def get_all_models(solver, variables):
     models = []
-    for i in tqdm(range(1000)):
+    for _ in range(MAX_MODELS):
         if solver.check() != sat: break
         model = solver.model()
         models.append(model)

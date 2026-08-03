@@ -4,13 +4,17 @@ Outstanding work for RAnalysisLogic. The core is functional and the code has bee
 cleaned up (see [Done](#done)); what remains is a couple of bigger research
 directions rather than a backlog of smaller fixes.
 
+Measured defects and hard limits live in [`KNOWNISSUES.md`](KNOWNISSUES.md);
+this file is the forward plan.
+
 ## Research directions
 
-Not blockers — the README's "Known limitations" already frames these honestly as
-future work:
+The two big ones. Neither is a blocker for what the tool already does:
 
 - [ ] **Collision search** — the original goal: model two circuit instances sharing
-  an output and ask Z3 for differing inputs.
+  an output and ask Z3 for differing inputs. Nothing in the current API expresses
+  "two instances", so this needs a request shape beyond `LogicCircuit` before any
+  solving strategy matters.
 - [ ] **Scale rendering and solving** toward the full SHA-256 circuit (~116k gates),
   which the current visualizer and brute-force solver don't handle. Now a
   concrete, diagnosed blocker rather than a vague one (see the sha256.txt Done
@@ -23,8 +27,133 @@ future work:
   problem from just not crashing) or a custom, non-recursive layout for
   circuits this size.
 
+## Planned, smaller
+
+Diagnosed and scoped, deliberately not done in the showcase pass:
+
+- [ ] **Make CORS configurable** (env var, defaulting to the dev-server origin).
+  Hardcoding `http://localhost:5173` in `server.py` means a production build —
+  including `vite preview` and the hosted demo — can never reach a local
+  backend. This is the single change that would let the demo talk to a solver
+  the visitor runs themselves.
+- [ ] **Cap `/truth-table`.** It is `2^n` in a module's boundary-input count with
+  no guard. Every module the 64-bit adder produces has 9 inputs (512 rows), so
+  nothing shipped hits a wall — but nothing prevents one either. Reject or
+  paginate past some n, and say so in the UI.
+- [ ] **Report truncation from `solve_all`.** The 1000-model cap
+  (`MAX_MODELS`) silently returns a partial answer that looks complete.
+- [ ] **Handle gates with more than two inputs in `convert_to_z3`.** The
+  simulator folds over every input; the solver reads only the first two, so the
+  two would disagree on such a circuit. Neither shipped sample has one.
+- [ ] **Fix the off-by-one in `groupByModules`.** `countUniqueIO` is evaluated
+  against the group *before* the next node is appended, so a module reliably
+  ends up one node past `maxModuleSize` — every one of the 64-bit adder's 21
+  modules has 9 boundary inputs against a nominal limit of 8. Harmless today
+  (it only makes modules slightly larger than advertised) but the limit does not
+  mean what it says.
+
+## Deliberately not doing
+
+- **A client-side solver for the hosted demo.** Considered, and rejected:
+  a closed-form inverse or a precomputed-answer cache would exploit the fact
+  that an adder is trivially invertible, demonstrating nothing about the
+  Z3-backed solving the project is actually about. A disclaimer is more honest.
+- **Bundling `sha256.txt` into the demo.** It is 3.1 MB and cannot render
+  (issue 1) — shipping it would only produce a crash a visitor can reach.
+
 ## Done
 
+- **Made the hosted demo actually demonstrate the project.** The deployed page
+  loaded the hardcoded `graph4bitAdder` and offered a file picker as the only
+  other way in — so a visitor, who has no Bristol circuit file, could never
+  reach module overview mode, the module preview, the truth-table tab, or
+  dependency highlighting through modules. Confirmed against the live site
+  before changing anything (Playwright: 9 input bits / 5 output bits, zero
+  module nodes, 0 console errors — a 34-node flat 4-bit adder). Fixed by
+  bundling `64-bit-adder.txt` via `?raw` (6.5 KB inlined) behind a **Circuit**
+  dropdown, so the deep circuit that triggers overview mode is one click away.
+  `sha256.txt` is deliberately still not bundled — it is 3.1 MB and cannot
+  render. Also added a one-line on-page legend, since nothing told a visitor
+  that nodes were clickable at all.
+- Fixed `convert_to_z3` rejecting **NAND and NOR**. `parser.ts` maps both and
+  `simulateGraph` evaluates both, so such a circuit loaded, rendered and
+  simulated correctly in the browser and then answered **HTTP 500** the moment
+  you pressed Solve (an unhandled `ValueError: Unknown gate type`). Reproduced
+  first (NAND and NOR both 500, XOR control 200), then fixed, then re-verified
+  green; pinned by 6 parametrized truth-table cases plus an over-HTTP
+  regression test. Neither shipped sample circuit uses these gate types, which
+  is why it went unnoticed.
+- Fixed the **Solve** button appearing to do nothing. With the backend running
+  it called `console.log(data)` and nothing else — no UI change, no message.
+  It now renders the returned model through the existing `displaySolution`
+  path and reports unsat, matching what "Solve (fix outputs)" already did.
+  Verified end-to-end against the real Z3 backend.
+- Removed the `/simulate` endpoint. It returned `convert_to_z3`'s raw Z3 AST
+  objects, which FastAPI serialized into meaningless `{"ast":{},"ctx":{…}}`
+  blobs — a 200 response carrying nothing usable. Nothing in the frontend
+  called it (`shared.ts` only uses `/solve` and `/truth-table`).
+- Removed the redundant `groupByModules` call in the file-upload handler. It
+  re-ran the grouping `drawGraph` had just done (double work on every upload)
+  and, worse, ran **unguarded** — `drawGraph` skips grouping above
+  `MODULE_VIEW_MAX_NODES`, so this line defeated that safety cap for exactly
+  the circuits it existed to protect. Its only output was a `console.log`.
+- Laid the toolbar and canvas out as flex siblings instead of absolutely
+  positioning `#app` at a hardcoded `top: 132px`. That constant existed because
+  the canvas otherwise overlapped the toolbar and swallowed clicks on the top
+  row of nodes; it also had to be re-tuned whenever a toolbar row was added
+  (this pass added one). The flex layout makes the overlap impossible rather
+  than compensating for it, and let nine `position: relative; z-index: 10`
+  rules be deleted. Verified by clicking a module at its real rendered
+  coordinates (`network.canvasToDOM`) and asserting the preview opens.
+- Replaced the leftover Vite scaffolding: the page title was **"Vite + TS"** on
+  the live demo (a browser tab a recruiter sees), the favicon was the Vite logo.
+  Now a real title, description meta, and an original AND-gate favicon. Deleted
+  `counter.ts`, `typescript.svg`, `vite.svg` and the template's `.logo`/`.card`/
+  `.read-the-docs`/`#network` CSS, plus the dead `splitIntoModules` in
+  `logic.ts` (superseded by `groupByModules`, referenced nowhere).
+- Dependency cleanup: dropped the `fs` **dependency** — the npm squatter
+  placeholder for the Node builtin, which has no code and no business in a
+  browser bundle — and moved `vite` from a pinned `4.5.0` to `^7`, which
+  `vitest@4` already peer-required (`vite ^6–^8`). **npm audit 4 advisories
+  (2 high, 2 moderate) → 0**; 62 → 53 packages. Lockfile regenerated with
+  npm 10.9.3, the npm CI's Node 22 bundles, and verified with a clean
+  `npm ci` under that same npm — the failure mode documented below is exactly
+  what happens when it is generated with npm 11 instead.
+- Removed `tqdm` from `solver.py` and from `requirements.txt`: a progress bar
+  written to stderr on every `/solve` request is debug scaffolding, not server
+  behaviour. Its `range(1000)` magic number is now a named `MAX_MODELS`.
+- Renamed `64 Bit Adder.txt` → `64-bit-adder.txt` (via `git mv`). Spaces in a
+  path break shells, URLs and tooling, and this file is now fetched by the
+  bundler.
+- Added `logic-sim/tools/smoke.mjs` (`npm run smoke`): an 18-assertion
+  end-to-end browser test against the **production build** served by
+  `vite preview`, not the dev server — three of this project's past bugs were
+  invisible under `dev`. It loads both circuits, checks the 4-bit adder renders
+  per-gate (34 nodes) and the 64-bit adder as an overview (21 modules, 253
+  edges), drives input propagation, clicks a module at its real canvas position
+  and asserts the preview names it correctly, and fails on any console error or
+  failed request. Backed by a small `window.__logicSim` test hook, since
+  vis-network draws to a canvas and leaves nothing in the DOM to assert on.
+- Added `logic-sim/tools/screenshots.mjs` (`npm run screenshots`) so the README
+  images are regenerated from the real app rather than captured by hand, and
+  regenerated all of them. Two are new: the **module overview** and the
+  **module preview panel** — the project's most distinctive work, previously
+  shown nowhere. The captures double as verification: the overview shows
+  all-ones + all-ones on the 64-bit adder ending in a single red `OUT_441`
+  (sum bit 0), which is arithmetically correct, and the preview shows
+  `XOR(1,1)=0` red beside `AND(1,1)=1` green.
+- Expanded CI: Node 20 → 22 (20 is EOL, and Vite 7 requires ≥20.19/≥22.12),
+  frontend matrixed over **Ubuntu and Windows**, backend over **Python 3.10 and
+  3.13**, plus a new `smoke` job that builds, serves and drives the app in
+  headless Chromium — so "the demo works" is a check mark rather than a claim.
+- Added `CLAUDE.md` (commands, architecture, the invariants that must not break,
+  and the traps that have cost time), `KNOWNISSUES.md` (measured defects with
+  numbers), and `NOTICE.md` (provenance, sizes and SHA-256 hashes for both
+  third-party Bristol circuit files, plus every bundled dependency's licence —
+  previously the circuits' origin existed only as README prose).
+- Rewrote the README against the live site rather than from memory, which caught
+  it claiming the demo was "loaded with the 64-bit adder" while the code loaded
+  the 4-bit one — and contradicting itself about that two sections later.
 - Rewrote the README (accurate SHA-256 framing, corrected the circuit-format
   description, added setup and "Generating circuit files" sections).
 - Removed the redundant 9.4 MB `logic-graph.json` from the working tree.
