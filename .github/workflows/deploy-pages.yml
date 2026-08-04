@@ -31,8 +31,19 @@ jobs:
         run: npm ci
       - working-directory: logic-sim
         run: npx tsc
+      # The base path must match the repo name, because a project Pages site is
+      # served from https://<owner>.github.io/<repo>/. Derived rather than
+      # hardcoded: this was pinned to the old name and renaming the repo left
+      # the deploy emitting asset URLs under the previous path, so the page
+      # loaded but its CSS and JS both 404'd and the app never booted.
       - working-directory: logic-sim
-        run: npx vite build --base=/RAnalysisLogic/
+        run: npx vite build --base=/${{ github.event.repository.name }}/
+      - name: Verify the emitted asset paths match the repo name
+        working-directory: logic-sim
+        run: |
+          grep -q 'src="/${{ github.event.repository.name }}/assets/' dist/index.html \
+            || { echo "dist/index.html does not reference /${{ github.event.repository.name }}/assets/:"; \
+                 grep -oE '(src|href)="[^"]*"' dist/index.html; exit 1; }
       - uses: actions/upload-pages-artifact@v3
         with:
           path: logic-sim/dist

@@ -1,17 +1,17 @@
-# RAnalysisLogic
+# logic-circuit-analyzer
 
 An interactive **boolean logic circuit visualizer, simulator and SAT-based
 solver** — built toward analyzing SHA-256 as a plain gate circuit.
 
-[![CI](https://github.com/Dimitriuses/RAnalysisLogic/actions/workflows/ci.yml/badge.svg)](https://github.com/Dimitriuses/RAnalysisLogic/actions/workflows/ci.yml)
-[![Deploy demo](https://github.com/Dimitriuses/RAnalysisLogic/actions/workflows/deploy-pages.yml/badge.svg)](https://github.com/Dimitriuses/RAnalysisLogic/actions/workflows/deploy-pages.yml)
+[![CI](https://github.com/Dimitriuses/logic-circuit-analyzer/actions/workflows/ci.yml/badge.svg)](https://github.com/Dimitriuses/logic-circuit-analyzer/actions/workflows/ci.yml)
+[![Deploy demo](https://github.com/Dimitriuses/logic-circuit-analyzer/actions/workflows/deploy-pages.yml/badge.svg)](https://github.com/Dimitriuses/logic-circuit-analyzer/actions/workflows/deploy-pages.yml)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178c6)](https://www.typescriptlang.org/)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776ab)](https://www.python.org/)
 [![Z3](https://img.shields.io/badge/solver-Z3-8a2be2)](https://github.com/Z3Prover/z3)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![status: active](https://img.shields.io/badge/status-active-brightgreen.svg)](ROADMAP.md)
 
-## ▶ [Try the live demo](https://dimitriuses.github.io/RAnalysisLogic/)
+## ▶ [Try the live demo](https://dimitriuses.github.io/logic-circuit-analyzer/)
 
 Pick a circuit from the **Circuit** dropdown — the 4-bit adder renders per gate,
 the 64-bit adder is deep enough to render as a module overview. Click an
@@ -105,7 +105,7 @@ explains how to get more.
 
 ## Live demo
 
-[dimitriuses.github.io/RAnalysisLogic](https://dimitriuses.github.io/RAnalysisLogic/)
+[dimitriuses.github.io/logic-circuit-analyzer](https://dimitriuses.github.io/logic-circuit-analyzer/)
 — the visualizer and simulator, deployed from `logic-sim` via GitHub Pages
 (`.github/workflows/deploy-pages.yml`). It is a **static** build: **Solve**,
 **Solve (fix outputs)** and a module's **Truth Table** tab all call PyZ3Server,

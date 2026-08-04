@@ -1,6 +1,6 @@
 # Roadmap
 
-Outstanding work for RAnalysisLogic. The core is functional and the code has been
+Outstanding work for logic-circuit-analyzer. The core is functional and the code has been
 cleaned up (see [Done](#done)); what remains is a couple of bigger research
 directions rather than a backlog of smaller fixes.
 
@@ -63,6 +63,18 @@ Diagnosed and scoped, deliberately not done in the showcase pass:
 
 ## Done
 
+- **Fixed the live demo breaking when the repo was renamed** `RAnalysisLogic` →
+  `logic-circuit-analyzer`. A project Pages site is served from
+  `https://<owner>.github.io/<repo>/`, and `deploy-pages.yml` hardcoded
+  `--base=/RAnalysisLogic/`, so after the rename the page still returned 200
+  while both its stylesheet and its script 404'd — a blank canvas with a dead
+  toolbar and two failed requests, confirmed against the live site. The base is
+  now derived from `${{ github.event.repository.name }}` rather than written
+  down, so a future rename cannot reintroduce it, and the workflow greps the
+  emitted `dist/index.html` for the expected asset prefix and fails the build if
+  it ever disagrees — a silent 404 on the deployed page is otherwise invisible
+  to a green workflow. Also updated the README's badge and demo URLs and the
+  git remote.
 - **Made the hosted demo actually demonstrate the project.** The deployed page
   loaded the hardcoded `graph4bitAdder` and offered a file picker as the only
   other way in — so a visitor, who has no Bristol circuit file, could never
@@ -171,7 +183,7 @@ Diagnosed and scoped, deliberately not done in the showcase pass:
   order, which didn't line up with what `settupInputs` accepted or with a
   coherent numeric value).
 - Shipped the GitHub Pages live demo: `.github/workflows/deploy-pages.yml`
-  builds `logic-sim` (with `--base=/RAnalysisLogic/`) and deploys it on push to
+  builds `logic-sim` (with a `--base` derived from the repo name) and deploys it on push to
   `main`. Solve buttons now `.catch()` the fetch and show a plain-language
   disclaimer (no backend on a static deploy) instead of failing silently —
   considered and rejected a closed-form client-side solver and a
